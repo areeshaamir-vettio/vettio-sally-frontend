@@ -52,3 +52,7 @@ export interface SearchResponse {
   results: any[];
   total: number;
 }
+
+export interface CompanyOnboardingData {
+  companyUrl: string;
+}

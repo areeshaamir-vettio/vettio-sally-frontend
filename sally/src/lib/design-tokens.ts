@@ -1,52 +1,89 @@
-// lib/design-tokens.ts
 export const designTokens = {
   colors: {
-    primary: {
-      purple: '#8952E0', // Primary button color
-      white: '#FFFFFF',
-      black: '#1D2025', // Text primary
+    background: {
+      primary: '#F9FAFA',
+      card: '#FFFFFF',
     },
     text: {
-      primary: '#1D2025', // Main headings
-      secondary: '#4D4B4A', // Subheadings  
-      muted: '#7D7F83', // Help text, placeholders
-      tertiary: '#2C2B2A', // Feature text
+      primary: '#1D2025',
+      secondary: '#6B7280',
+      muted: '#9CA3AF',
     },
-    background: {
-      white: '#FFFFFF',
-      gray: '#F1F1F2', // Login button background
+    button: {
+      primary: '#8952E0',
+      primaryHover: '#7A47CC',
+      secondary: '#F3F4F6',
+      secondaryHover: '#E5E7EB',
+      secondaryText: '#374151',
     },
     border: {
-      gray: '#4D4B4A', // Dividers
+      default: '#D1D5DB',
+      focus: '#8952E0',
+      upload: '#E5E7EB',
+      uploadHover: '#D1D5DB',
+    },
+    input: {
+      background: '#FFFFFF',
+      placeholder: '#9CA3AF',
     },
     status: {
-      success: '#0EA371', // Avatar badge
-      error: '#E53E3E', // Required field asterisk
-    }
+      completed: '#10B981',
+      inProgress: '#F59E0B',
+      pending: '#6B7280',
+    },
   },
   spacing: {
-    navbar: '56px',
-    container: {
-      width: '447px',
-      height: '429px'
+    xs: '0.25rem',    // 4px
+    sm: '0.5rem',     // 8px
+    md: '1rem',       // 16px
+    lg: '1.5rem',     // 24px
+    xl: '2rem',       // 32px
+    '2xl': '3rem',    // 48px
+  },
+  dimensions: {
+    navbar: {
+      height: '56px',
     },
-    card: {
-      width: '384px', 
-      height: '602.5px'
-    }
+    jobDescription: {
+      contentWidth: '586px',
+      contentHeight: '92px',
+      titleHeight: '36px',
+      buttonFrameWidth: '324px',
+      buttonFrameHeight: '32px',
+      primaryButtonWidth: '194px',
+      secondaryButtonWidth: '122px',
+      buttonHeight: '32px',
+    },
+    conversationalAi: {
+      mainContentWidth: '332px',
+      mainContentHeight: '448.53px',
+      titleSectionHeight: '36px',
+      chatAreaHeight: '388.53px',
+      drawerWidth: '373px',
+      drawerHeight: '877px',
+      profileSectionHeight: '68px',
+      detailsSectionHeight: '804px',
+    },
+  },
+  borderRadius: {
+    sm: '0.25rem',    // 4px
+    md: '0.5rem',     // 8px
+    lg: '0.75rem',    // 12px
+  },
+  shadows: {
+    card: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+    drawer: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 10px 15px -3px rgb(0 0 0 / 0.1)',
   },
   typography: {
-    heading: {
-      fontSize: '2.25rem', // 36px equivalent for main heading
-      lineHeight: '2.5rem'
+    title: {
+      fontSize: '1.5rem',      // 24px
+      lineHeight: '2rem',      // 32px
+      fontWeight: '600',
     },
-    subheading: {
-      fontSize: '1.125rem', // 18px
-      lineHeight: '1.5rem'
+    button: {
+      fontSize: '0.875rem',    // 14px
+      lineHeight: '1.25rem',   // 20px
+      fontWeight: '500',
     },
-    body: {
-      fontSize: '1rem', // 16px
-      lineHeight: '1.5rem'
-    }
-  }
+  },
 } as const;

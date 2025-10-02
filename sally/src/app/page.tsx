@@ -1,3 +1,5 @@
+// ignore this page ill remove it in later commits after adding the app router
+
 import { Rocket, Target, Satellite } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeatureCard } from "@/components/FeatureCard";
