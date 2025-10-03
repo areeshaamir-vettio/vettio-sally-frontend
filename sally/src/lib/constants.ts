@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
     CORPORATE_REGISTER: '/api/v1/auth/register/corporate', // Corporate registration with email validation
     REFRESH: '/api/v1/auth/refresh',
     LOGOUT: '/api/v1/auth/logout',
+    ME: '/api/v1/auth/me',
     VERIFY_EMAIL: '/api/v1/auth/verify-email',
     FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
     RESET_PASSWORD: '/api/v1/auth/reset-password',

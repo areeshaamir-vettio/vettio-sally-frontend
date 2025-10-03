@@ -1,32 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { Check, Clock, Circle } from 'lucide-react';
-import { JobDescriptionRoadmap, RoadmapStep } from '@/types/conversational-ai';
-import { mockConversationalAiApi } from '@/lib/mock-conversational-ai-api';
+import { RoadmapStep } from '@/types/conversational-ai';
+import { mapRoleToRoadmap } from '@/lib/mappers/role-enhancement-mapper';
+import { RoleData } from '@/types/role-enhancement';
 
 interface RoadmapProps {
   roadmapId: string;
+  roleData: RoleData | null; // Changed to receive role data directly
+  isLoading?: boolean; // Loading state from parent
+  onError?: (error: string) => void; // Added for error handling
 }
 
-export function Roadmap({ roadmapId }: RoadmapProps) {
-  const [roadmap, setRoadmap] = useState<JobDescriptionRoadmap | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function Roadmap({ roadmapId, roleData, isLoading = false }: RoadmapProps) {
+  // Map role data to roadmap format using useMemo to avoid recalculation
+  const roadmap = useMemo(() => {
+    if (!roleData) return null;
+    return mapRoleToRoadmap(roleData, roadmapId);
+  }, [roleData, roadmapId]);
 
-  useEffect(() => {
-    const loadRoadmap = async () => {
-      try {
-        const data = await mockConversationalAiApi.getRoadmap(roadmapId);
-        setRoadmap(data);
-      } catch (error) {
-        console.error('Failed to load roadmap:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadRoadmap();
-  }, [roadmapId]);
+  const error = !roleData && !isLoading ? 'No role data available' : null;
 
   const getStatusIcon = (status: RoadmapStep['status'], stepNumber: number) => {
     switch (status) {
@@ -41,19 +35,6 @@ export function Roadmap({ roadmapId }: RoadmapProps) {
     }
   };
 
-  const getStatusColor = (status: RoadmapStep['status']) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-[#10B981]'; // Green
-      case 'in-progress':
-        return 'bg-[#F59E0B]'; // Orange
-      case 'pending':
-        return 'bg-[#E5E7EB]'; // Gray
-      default:
-        return 'bg-[#E5E7EB]';
-    }
-  };
-
   const getStatusText = (status: RoadmapStep['status']) => {
     switch (status) {
       case 'completed':
@@ -64,19 +45,6 @@ export function Roadmap({ roadmapId }: RoadmapProps) {
         return 'Pending';
       default:
         return 'Pending';
-    }
-  };
-
-  const getStatusTextColor = (status: RoadmapStep['status']) => {
-    switch (status) {
-      case 'completed':
-        return 'text-[#10B981]';
-      case 'in-progress':
-        return 'text-[#F59E0B]';
-      case 'pending':
-        return 'text-[#6B7280]';
-      default:
-        return 'text-[#6B7280]';
     }
   };
 
@@ -99,10 +67,18 @@ export function Roadmap({ roadmapId }: RoadmapProps) {
     );
   }
 
-  if (!roadmap) {
+  if (error || !roadmap) {
     return (
       <div className="p-6 text-center">
-        <p className="text-[#6B7280]">Failed to load roadmap</p>
+        <p className="text-[#6B7280] mb-2">
+          {error || 'Failed to load roadmap'}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-sm text-[#8952E0] hover:underline"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -138,7 +114,7 @@ export function Roadmap({ roadmapId }: RoadmapProps) {
 
           {/* Step Items */}
           <div className="space-y-6">
-            {roadmap.steps.map((step, index) => (
+            {roadmap.steps.map((step) => (
               <div key={step.id} className="relative flex items-start">
                 {/* Step Circle */}
                 <div

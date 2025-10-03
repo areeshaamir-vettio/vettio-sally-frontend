@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthService, TokenManager } from './auth';
+import { API_CONFIG, API_ENDPOINTS } from './constants';
 
 export function debugAuthState() {
   const accessToken = TokenManager.getAccessToken();
@@ -85,7 +86,7 @@ export async function testAuthenticatedRequest() {
   }
   
   try {
-    const response = await fetch('http://localhost:8000/api/v1/auth/me', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.ME}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'

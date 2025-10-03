@@ -4,6 +4,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   timestamp: string;
   isTyping?: boolean;
+  metadata?: Record<string, unknown>; // Added for API compatibility
 }
 
 export interface ConversationSession {
@@ -13,6 +14,8 @@ export interface ConversationSession {
   createdAt: string;
   updatedAt: string;
   status: 'active' | 'paused' | 'completed';
+  roleId?: string; // Added for role enhancement integration
+  conversationType?: string; // Added for conversation type tracking
 }
 
 export interface SendMessageRequest {

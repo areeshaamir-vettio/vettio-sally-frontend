@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { User, AuthState, LoginRequest, RegisterRequest, CorporateRegisterRequest } from '@/types/auth';
 import { AuthService } from '@/lib/auth';
 import { apiClient } from '@/lib/api-client';
+import { API_CONFIG, API_ENDPOINTS } from '@/lib/constants';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -90,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isValid) {
         // Fetch user data from /me endpoint
         const token = AuthService.getAccessToken();
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.ME}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
