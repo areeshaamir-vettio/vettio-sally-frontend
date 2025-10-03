@@ -15,7 +15,7 @@ export default function LandingPage() {
           <div className="space-y-8">
             <div className="space-y-10">
               <h1 className="text-4xl font-bold text-black leading-tight">
-                You're one conversation away from your perfect hire
+                You&apos;re one conversation away from your perfect hire
               </h1>
               <p className="text-lg text-[#4D4B4A] leading-relaxed">
                 An intuitive AI interface built to save hours and deliver better hiring outcomes.

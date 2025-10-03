@@ -7,9 +7,9 @@ import { Plus } from 'lucide-react';
 export function WelcomeCard() {
   const router = useRouter();
 
-  const handleCreateJob = () => {
-    // Navigate to the next page in the flow
-    router.push('/create-job');
+  const handleGetStarted = () => {
+    // Navigate to company onboarding (step 3 in the flow)
+    router.push('/company-onboarding');
   };
 
   return (
@@ -45,11 +45,11 @@ export function WelcomeCard() {
 
         {/* CTA Button */}
         <button
-          onClick={handleCreateJob}
+          onClick={handleGetStarted}
           className="w-full bg-[#8952E0] text-white py-3 px-4 rounded-md hover:bg-[#7A47CC] transition-colors font-medium flex items-center justify-center gap-2"
         >
           <Plus size={20} />
-          Create A New Job
+          Get Started
         </button>
       </div>
     </div>

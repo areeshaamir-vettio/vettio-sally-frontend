@@ -2,11 +2,114 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
 import { RegisterRequest } from '@/types/auth';
-import { Mail } from 'lucide-react';
+
+// Blocked personal email domains
+const BLOCKED_DOMAINS = [
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',
+  'aol.com', 'icloud.com', 'protonmail.com', 'live.com',
+  'msn.com', 'yandex.com', 'mail.com', 'zoho.com'
+];
+
+// Error mappings for user-friendly messages
+const ERROR_MAPPINGS: Record<string, string> = {
+  // Organization errors
+  'Failed to create organization': 'Unable to set up your organization. This might be a temporary issue. Please try again.',
+  'Organization creation failed': 'Unable to set up your organization. Please try again or contact support.',
+  'Organization service unavailable': 'Organization service is temporarily unavailable. Please try again later.',
+
+  // Email validation errors
+  'Invalid email format': 'Please enter a valid email address',
+  'corporate email address': 'Please use your work email. Personal emails (Gmail, Yahoo, etc.) aren\'t supported.',
+  'Personal email providers': 'Please use your work email. Personal emails (Gmail, Yahoo, etc.) aren\'t supported.',
+  'User with this email already exists': 'An account with this email already exists. Try logging in instead.',
+  'already exists': 'An account with this email already exists. Try logging in instead.',
+
+  // Password validation errors
+  'Password must be at least 8 characters': 'Password must be at least 8 characters long',
+  'Password must contain at least one uppercase letter': 'Password must include at least one uppercase letter (A-Z)',
+  'Password must contain at least one lowercase letter': 'Password must include at least one lowercase letter (a-z)',
+  'Password must contain at least one digit': 'Password must include at least one number (0-9)',
+  'Password must contain at least one number': 'Password must include at least one number (0-9)',
+
+  // Firebase/Auth errors
+  'Failed to create user in Firebase Auth': 'Account creation failed. Please try again.',
+  'Firebase Auth': 'Account creation failed. Please try again.',
+
+  // Network errors
+  'Network error': 'Connection problem. Please check your internet and try again.',
+  'fetch': 'Connection problem. Please check your internet and try again.',
+};
+
+// Password validation function
+const validatePassword = (password: string): string[] => {
+  const errors: string[] = [];
+
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+
+  if (!/\d/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+
+  return errors;
+};
+
+// Email validation functions
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email);
+};
+
+const isPersonalEmail = (email: string): boolean => {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return BLOCKED_DOMAINS.includes(domain);
+};
+
+// Enhanced error parsing function
+const parseErrorMessage = (error: unknown): string => {
+  if (typeof error === 'string') {
+    return getErrorMapping(error);
+  }
+
+  if (error instanceof Error) {
+    // Try to extract meaningful error from API response
+    const message = error.message;
+
+    // Check for specific error patterns
+    for (const [key, userMessage] of Object.entries(ERROR_MAPPINGS)) {
+      if (message.toLowerCase().includes(key.toLowerCase())) {
+        return userMessage;
+      }
+    }
+
+    return getErrorMapping(message);
+  }
+
+  return 'Registration failed. Please try again.';
+};
+
+const getErrorMapping = (message: string): string => {
+  for (const [key, userMessage] of Object.entries(ERROR_MAPPINGS)) {
+    if (message.toLowerCase().includes(key.toLowerCase())) {
+      return userMessage;
+    }
+  }
+  return message || 'Registration failed. Please try again.';
+};
 
 // Google Icon Component
 const GoogleIcon = () => (
@@ -37,7 +140,15 @@ const GitHubIcon = () => (
   </svg>
 );
 
+// LinkedIn Icon Component
+const LinkedInIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+  </svg>
+);
+
 export function SignUpForm() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -45,32 +156,190 @@ export function SignUpForm() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+  const [showRetry, setShowRetry] = useState(false);
+  const [errorType, setErrorType] = useState<'validation' | 'server' | 'network' | null>(null);
+
+  const handlePasswordChange = (password: string) => {
+    setFormData({ ...formData, password });
+    const errors = validatePassword(password);
+    setPasswordErrors(errors);
+    // Clear password field error when user starts typing
+    if (fieldErrors.password) {
+      setFieldErrors(prev => ({ ...prev, password: false }));
+    }
+  };
+
+  const handleEmailChange = (email: string) => {
+    setFormData({ ...formData, email });
+    // Clear email field error when user starts typing
+    if (fieldErrors.email) {
+      setFieldErrors(prev => ({ ...prev, email: false }));
+    }
+  };
+
+  const handleNameChange = (fullName: string) => {
+    setFormData({ ...formData, fullName });
+    // Clear name field error when user starts typing
+    if (fieldErrors.fullName) {
+      setFieldErrors(prev => ({ ...prev, fullName: false }));
+    }
+  };
+
+  const validateClientSide = (): string[] => {
+    const errors: string[] = [];
+    const newFieldErrors: Record<string, boolean> = {};
+
+    // Email validation
+    if (!formData.email) {
+      errors.push('Email is required');
+      newFieldErrors.email = true;
+    } else if (!isValidEmail(formData.email)) {
+      errors.push('Please enter a valid email address');
+      newFieldErrors.email = true;
+    } else if (isPersonalEmail(formData.email)) {
+      errors.push('Please use your work email. Personal emails (Gmail, Yahoo, etc.) aren\'t supported.');
+      newFieldErrors.email = true;
+    }
+
+    // Password validation
+    if (!formData.password) {
+      errors.push('Password is required');
+      newFieldErrors.password = true;
+    } else {
+      const passwordValidationErrors = validatePassword(formData.password);
+      if (passwordValidationErrors.length > 0) {
+        errors.push(...passwordValidationErrors);
+        newFieldErrors.password = true;
+      }
+    }
+
+    // Name validation
+    if (!formData.fullName || formData.fullName.trim().length < 2) {
+      errors.push('Full name must be at least 2 characters long');
+      newFieldErrors.fullName = true;
+    }
+
+    setFieldErrors(newFieldErrors);
+    return errors;
+  };
+
+  const clearMessages = () => {
+    setError(null);
+    setSuccess(false);
+    setShowRetry(false);
+    setErrorType(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    clearMessages();
 
     try {
+      // Client-side validation first
+      const validationErrors = validateClientSide();
+      if (validationErrors.length > 0) {
+        setErrorType('validation');
+        throw new Error(validationErrors.join('. '));
+      }
+
       const registerData: RegisterRequest = {
         email: formData.email,
         password: formData.password,
         full_name: formData.fullName,
-        is_active: true,
-        organization_id: 'default_org', // TODO: Allow user to select organization
       };
 
       const response = await apiClient.register(registerData);
       console.log('Registration successful:', response);
-      // TODO: Handle successful registration (redirect, show success message, etc.)
-    } catch (error) {
+      setSuccess(true);
+
+      // Redirect to get-started page after successful registration
+      setTimeout(() => {
+        router.push('/get-started');
+      }, 2000);
+
+    } catch (error: unknown) {
       console.error('Registration failed:', error);
-      // TODO: Handle registration error (show error message)
+      handleRegistrationError(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSocialAuth = async (provider: 'google' | 'github' | 'outlook') => {
+  const handleRegistrationError = (error: unknown) => {
+    let errorMessage = 'Registration failed. Please try again.';
+    let shouldShowRetry = false;
+    let errorCategory: 'validation' | 'server' | 'network' = 'server';
+    const newFieldErrors: Record<string, boolean> = {};
+
+    try {
+      // Parse the error message
+      errorMessage = parseErrorMessage(error);
+
+      // Determine error type and specific field errors
+      if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+
+        // Network errors
+        if (message.includes('network') || message.includes('fetch') || message.includes('connection')) {
+          errorCategory = 'network';
+          shouldShowRetry = true;
+          errorMessage = 'Connection problem. Please check your internet and try again.';
+        }
+        // Organization creation errors (your specific case)
+        else if (message.includes('failed to create organization') || message.includes('organization')) {
+          errorCategory = 'server';
+          shouldShowRetry = true;
+          errorMessage = 'Unable to set up your organization. This might be a temporary issue. Please try again.';
+        }
+        // Email-related errors
+        else if (message.includes('email') || message.includes('already exists')) {
+          errorCategory = 'validation';
+          newFieldErrors.email = true;
+          if (message.includes('already exists')) {
+            errorMessage = 'An account with this email already exists. Try logging in instead.';
+          }
+        }
+        // Password-related errors
+        else if (message.includes('password')) {
+          errorCategory = 'validation';
+          newFieldErrors.password = true;
+        }
+        // Firebase/Auth errors
+        else if (message.includes('firebase') || message.includes('auth')) {
+          errorCategory = 'server';
+          shouldShowRetry = true;
+          errorMessage = 'Account creation failed. Please try again.';
+        }
+        // Server errors (500, etc.)
+        else if (message.includes('server') || message.includes('internal')) {
+          errorCategory = 'server';
+          shouldShowRetry = true;
+          errorMessage = 'Server error. Please try again later.';
+        }
+      }
+    } catch (parseError) {
+      console.warn('Error parsing registration error:', parseError);
+      errorCategory = 'server';
+      shouldShowRetry = true;
+    }
+
+    setError(errorMessage);
+    setErrorType(errorCategory);
+    setShowRetry(shouldShowRetry);
+    setFieldErrors(prev => ({ ...prev, ...newFieldErrors }));
+  };
+
+  const handleRetry = () => {
+    clearMessages();
+    setFieldErrors({});
+  };
+
+  const handleSocialAuth = async (provider: 'google' | 'github' | 'linkedin') => {
     try {
       setSocialLoading(provider);
       switch (provider) {
@@ -80,8 +349,8 @@ export function SignUpForm() {
         case 'github':
           await apiClient.loginWithGithub();
           break;
-        case 'outlook':
-          await apiClient.loginWithOutlook();
+        case 'linkedin':
+          await apiClient.loginWithLinkedIn();
           break;
       }
     } catch (error) {
@@ -97,6 +366,52 @@ export function SignUpForm() {
       <div className="text-center mb-8">
         <h2 className="text-2xl font-semibold text-[#171A1D]">Sign up for free</h2>
       </div>
+
+      {/* Success Message */}
+      {success && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="text-green-800 text-sm">
+            ✅ Registration successful! Please check your email for verification. Redirecting...
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className={`mb-6 p-4 border rounded-lg ${
+          errorType === 'network' ? 'bg-yellow-50 border-yellow-200' :
+          errorType === 'validation' ? 'bg-red-50 border-red-200' :
+          'bg-orange-50 border-orange-200'
+        }`}>
+          <div className={`text-sm font-medium mb-2 ${
+            errorType === 'network' ? 'text-yellow-800' :
+            errorType === 'validation' ? 'text-red-800' :
+            'text-orange-800'
+          }`}>
+            {errorType === 'network' ? '🌐 Connection Issue' :
+             errorType === 'validation' ? '⚠️ Validation Error' :
+             '🔧 Server Issue'}
+          </div>
+          <div className={`text-sm ${
+            errorType === 'network' ? 'text-yellow-700' :
+            errorType === 'validation' ? 'text-red-700' :
+            'text-orange-700'
+          }`}>
+            {error}
+          </div>
+          {showRetry && (
+            <button
+              onClick={handleRetry}
+              className={`mt-3 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                errorType === 'network' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
+                'bg-orange-100 text-orange-800 hover:bg-orange-200'
+              }`}
+            >
+              Try Again
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Social Auth Buttons */}
       <div className="space-y-3 mb-6">
@@ -121,11 +436,11 @@ export function SignUpForm() {
         <Button
           variant="outline"
           className="w-full flex items-center gap-2"
-          onClick={() => handleSocialAuth('outlook')}
-          disabled={socialLoading === 'outlook'}
+          onClick={() => handleSocialAuth('linkedin')}
+          disabled={socialLoading === 'linkedin'}
         >
-          <Mail className="w-4 h-4" />
-          {socialLoading === 'outlook' ? 'Connecting...' : 'Continue with Outlook'}
+          <LinkedInIcon />
+          {socialLoading === 'linkedin' ? 'Connecting...' : 'Continue with LinkedIn'}
         </Button>
       </div>
 
@@ -138,37 +453,106 @@ export function SignUpForm() {
 
       {/* Email/Password Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Email"
-          type="email"
-          required
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          helpText="Help text"
-        />
-        
-        <Input
-          label="Password"
-          type="password"
-          required
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          helpText="Help text"
-        />
+        <div className={`form-field ${fieldErrors.fullName ? 'error' : ''}`}>
+          <Input
+            label="Full Name"
+            type="text"
+            required
+            value={formData.fullName}
+            onChange={(e) => handleNameChange(e.target.value)}
+            helpText="Your full name"
+            className={fieldErrors.fullName ? 'border-red-500 focus:border-red-500' : ''}
+          />
+        </div>
+
+        <div className={`form-field ${fieldErrors.email ? 'error' : ''}`}>
+          <Input
+            label="Work Email"
+            type="email"
+            required
+            value={formData.email}
+            onChange={(e) => handleEmailChange(e.target.value)}
+            helpText="Use your company email address (not Gmail, Yahoo, etc.)"
+            className={fieldErrors.email ? 'border-red-500 focus:border-red-500' : ''}
+          />
+        </div>
+
+        <div className={`form-field ${fieldErrors.password ? 'error' : ''}`}>
+          <Input
+            label="Password"
+            type="password"
+            required
+            value={formData.password}
+            onChange={(e) => handlePasswordChange(e.target.value)}
+            helpText="Must be 8+ characters with uppercase, lowercase, and number"
+            className={fieldErrors.password ? 'border-red-500 focus:border-red-500' : ''}
+          />
+        </div>
+
+        {/* Password validation feedback */}
+        {formData.password && (
+          <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="text-gray-800 text-sm font-medium mb-2">Password requirements:</div>
+            <div className="space-y-1">
+              {[
+                { check: formData.password.length >= 8, text: 'At least 8 characters' },
+                { check: /[A-Z]/.test(formData.password), text: 'One uppercase letter' },
+                { check: /[a-z]/.test(formData.password), text: 'One lowercase letter' },
+                { check: /\d/.test(formData.password), text: 'One number' },
+                { check: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password), text: 'One special character' },
+              ].map((requirement, index) => (
+                <div key={index} className="flex items-center gap-2 text-sm">
+                  {requirement.check ? (
+                    <span className="text-green-500 font-bold">✓</span>
+                  ) : (
+                    <span className="text-red-500 font-bold">✗</span>
+                  )}
+                  <span className={requirement.check ? 'text-green-700' : 'text-red-700'}>
+                    {requirement.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <Button
           type="submit"
           className="w-full"
-          disabled={isLoading}
+          disabled={isLoading || (passwordErrors.length > 0 && formData.password.length > 0)}
         >
-          {isLoading ? 'Signing up...' : 'Sign up'}
+          {isLoading ? 'Creating Account...' :
+           passwordErrors.length > 0 && formData.password.length > 0 ? 'Fix Password Requirements' :
+           'Create Account'}
         </Button>
+
+        {/* Additional help text for common issues */}
+        {errorType === 'validation' && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="text-blue-800 text-sm font-medium mb-1">💡 Common Issues:</div>
+            <ul className="text-blue-700 text-sm space-y-1">
+              <li>• Make sure to use your work email (not Gmail, Yahoo, etc.)</li>
+              <li>• Password needs uppercase, lowercase, and numbers</li>
+              <li>• Check if you already have an account</li>
+            </ul>
+          </div>
+        )}
+
+        {errorType === 'server' && (
+          <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="text-purple-800 text-sm font-medium mb-1">🔧 Server Issue</div>
+            <div className="text-purple-700 text-sm">
+              We're experiencing technical difficulties. This is usually temporary.
+              Please try again in a few moments or contact support if the issue persists.
+            </div>
+          </div>
+        )}
       </form>
 
       {/* Footer Link */}
       <div className="text-center mt-6">
         <span className="text-[#7D7F83] text-sm">Already have an account? </span>
-        <a href="#" className="text-[#171A1D] text-sm font-medium hover:underline">
+        <a href="/login" className="text-[#171A1D] text-sm font-medium hover:underline">
           Log in
         </a>
       </div>

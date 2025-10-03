@@ -1,104 +1,212 @@
 // lib/api-client.ts
-import { LoginRequest, RegisterRequest, AuthResponse, RegisterResponse, SearchRequest, SearchResponse } from '@/types/auth';
-
-// Mock delay to simulate network requests
-const mockDelay = (ms: number = 1000) => new Promise(resolve => setTimeout(resolve, ms));
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import {
+  LoginRequest,
+  RegisterRequest,
+  CorporateRegisterRequest,
+  AuthResponse,
+  RegisterResponse,
+  SearchRequest,
+  SearchResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse
+} from '@/types/auth';
+import { API_CONFIG, API_ENDPOINTS } from './constants';
+import { AuthService, TokenManager, AuthUtils } from './auth';
+import { ErrorHandler, ApiError } from './errors';
 
 class ApiClient {
-  private baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.example.com';
+  private axiosInstance: AxiosInstance;
+  private baseUrl = API_CONFIG.BASE_URL;
 
-  // Authentication endpoints (your provided specs)
-  async login(data: LoginRequest): Promise<AuthResponse> {
-    await mockDelay();
-    
-    // Mock successful login response
-    return {
-      access_token: "mock_access_token_" + Date.now(),
-      refresh_token: "mock_refresh_token_" + Date.now(),
-      token_type: "bearer",
-      expires_in: 3600,
-      user: {
-        email: data.email,
-        full_name: "John Doe",
-        is_active: true,
-        id: "user_" + Date.now(),
-        organization_id: "org_123",
-        roles: ["recruiter"],
-        is_admin: false,
-        is_approved: true,
-        email_verified: true,
-        profile_picture_url: "https://via.placeholder.com/150",
-        bio: "Experienced recruiter",
-        phone_number: "+1234567890",
-        location: "San Francisco, CA",
-        timezone: "America/Los_Angeles",
-        mfa_enabled: false,
-        created_at: new Date().toISOString(),
-        last_login: new Date().toISOString()
+  constructor() {
+    this.axiosInstance = axios.create({
+      baseURL: this.baseUrl,
+      timeout: API_CONFIG.TIMEOUT,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors(): void {
+    // Request interceptor to add auth token
+    this.axiosInstance.interceptors.request.use(
+      (config) => {
+        const token = TokenManager.getAccessToken();
+        if (token && !TokenManager.isTokenExpired(token)) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // Response interceptor for error handling and token refresh
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          try {
+            const refreshToken = TokenManager.getRefreshToken();
+            if (refreshToken) {
+              const response = await this.refreshToken({ refresh_token: refreshToken });
+              TokenManager.setTokens(response.access_token, response.refresh_token);
+
+              // Retry original request with new token
+              originalRequest.headers.Authorization = `Bearer ${response.access_token}`;
+              return this.axiosInstance(originalRequest);
+            }
+          } catch (refreshError) {
+            // Refresh failed, logout user
+            AuthUtils.logout();
+            return Promise.reject(refreshError);
+          }
+        }
+
+        return Promise.reject(ErrorHandler.handleAxiosError(error));
       }
-    };
+    );
+  }
+
+  private async request<T = any>(
+    endpoint: string,
+    options: AxiosRequestConfig = {}
+  ): Promise<T> {
+    try {
+      const response: AxiosResponse<any> = await this.axiosInstance({
+        url: endpoint,
+        ...options,
+      });
+
+      // Handle different response structures
+      if (response.data?.data !== undefined) {
+        return response.data.data;
+      }
+
+      return response.data;
+    } catch (error) {
+      throw ErrorHandler.handleAxiosError(error as any);
+    }
+  }
+
+  // Authentication endpoints
+  async login(data: LoginRequest): Promise<AuthResponse> {
+    return this.request<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
+      method: 'POST',
+      data,
+    });
   }
 
   async register(data: RegisterRequest): Promise<RegisterResponse> {
-    await mockDelay();
-    
-    // Mock successful registration response
-    return {
-      email: data.email,
-      full_name: data.full_name,
-      is_active: data.is_active,
-      id: "user_" + Date.now(),
-      organization_id: data.organization_id,
-      roles: ["recruiter"],
-      is_admin: false,
-      is_approved: true,
-      email_verified: false,
-      profile_picture_url: "",
-      bio: "",
-      phone_number: "",
-      location: "",
-      timezone: "",
-      mfa_enabled: false,
-      created_at: new Date().toISOString(),
-      last_login: new Date().toISOString()
-    };
+    return this.request<RegisterResponse>(API_ENDPOINTS.AUTH.REGISTER, {
+      method: 'POST',
+      data,
+    });
   }
 
-  // TODO: Implement social authentication endpoints
-  // These are placeholder mocks - update with actual social auth providers
+  /**
+   * Register a new user with corporate email validation and organization management.
+   *
+   * This endpoint:
+   * - Validates corporate email address
+   * - Creates organization if first user from domain
+   * - Creates user with appropriate admin status
+   * - Sends email verification
+   *
+   * @param data Corporate registration data
+   * @returns Created user data
+   * @throws ApiError if registration fails
+   */
+  async registerCorporate(data: CorporateRegisterRequest): Promise<RegisterResponse> {
+    return this.request<RegisterResponse>(API_ENDPOINTS.AUTH.CORPORATE_REGISTER, {
+      method: 'POST',
+      data,
+    });
+  }
+
+  async refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
+    return this.request<RefreshTokenResponse>(API_ENDPOINTS.AUTH.REFRESH, {
+      method: 'POST',
+      data,
+    });
+  }
+
+  // Social authentication endpoints
   async loginWithGoogle(): Promise<AuthResponse> {
-    await mockDelay();
-    // TODO: Implement Google OAuth flow
-    // Endpoint: /auth/google/callback
-    throw new Error('Google authentication not implemented yet');
+    return this.request<AuthResponse>(API_ENDPOINTS.AUTH.GOOGLE, {
+      method: 'POST',
+    });
   }
 
   async loginWithGithub(): Promise<AuthResponse> {
-    await mockDelay();
-    // TODO: Implement GitHub OAuth flow  
-    // Endpoint: /auth/github/callback
-    throw new Error('GitHub authentication not implemented yet');
+    return this.request<AuthResponse>(API_ENDPOINTS.AUTH.GITHUB, {
+      method: 'POST',
+    });
   }
 
-  async loginWithOutlook(): Promise<AuthResponse> {
-    await mockDelay();
-    // TODO: Implement Microsoft/Outlook OAuth flow
-    // Endpoint: /auth/microsoft/callback
-    throw new Error('Outlook authentication not implemented yet');
+  async loginWithLinkedIn(): Promise<AuthResponse> {
+    return this.request<AuthResponse>(API_ENDPOINTS.AUTH.LINKEDIN, {
+      method: 'POST',
+    });
   }
 
-  // TODO: Implement search functionality
+  // Search functionality
   async search(data: SearchRequest): Promise<SearchResponse> {
-    await mockDelay(500);
-    // TODO: Implement actual search endpoint
-    // Endpoint: /search
-    return {
-      results: [
-        { id: 1, title: `Mock result for "${data.query}"`, type: 'candidate' },
-        { id: 2, title: `Another result for "${data.query}"`, type: 'job' }
-      ],
-      total: 2
-    };
+    return this.request<SearchResponse>(API_ENDPOINTS.SEARCH.GLOBAL, {
+      method: 'POST',
+      data,
+    });
+  }
+
+  // Additional authentication methods
+  async logout(): Promise<void> {
+    const refreshToken = TokenManager.getRefreshToken();
+    if (refreshToken) {
+      try {
+        await this.request(API_ENDPOINTS.AUTH.LOGOUT, {
+          method: 'POST',
+          data: { refresh_token: refreshToken },
+        });
+      } catch (error) {
+        // Log error but don't throw - logout should always succeed locally
+        console.error('Logout API call failed:', error);
+      }
+    }
+
+    // Always clear local tokens regardless of API call result
+    TokenManager.clearTokens();
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    return this.request(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
+      method: 'POST',
+      data: { email },
+    });
+  }
+
+  async resetPassword(token: string, password: string, confirmPassword: string): Promise<void> {
+    return this.request(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+      method: 'POST',
+      data: {
+        token,
+        password,
+        confirm_password: confirmPassword
+      },
+    });
+  }
+
+  async verifyEmail(token: string): Promise<void> {
+    return this.request(API_ENDPOINTS.AUTH.VERIFY_EMAIL, {
+      method: 'POST',
+      data: { token },
+    });
   }
 }
 

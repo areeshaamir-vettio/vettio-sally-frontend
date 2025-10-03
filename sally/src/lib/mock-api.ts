@@ -5,26 +5,19 @@ export const mockApiClient = {
   async register(data: RegisterRequest): Promise<RegisterResponse> {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Mock successful response
     return {
       email: data.email,
       full_name: data.full_name,
-      is_active: data.is_active,
+      is_active: true,
       id: `user_${Date.now()}`,
-      organization_id: data.organization_id,
+      organization_id: `org_${Date.now()}`,
       roles: ["recruiter"],
       is_admin: false,
       is_approved: true,
       email_verified: false,
-      profile_picture_url: "",
-      bio: "",
-      phone_number: "",
-      location: "",
-      timezone: "UTC",
-      mfa_enabled: false,
       created_at: new Date().toISOString(),
-      last_login: new Date().toISOString()
     };
   },
 

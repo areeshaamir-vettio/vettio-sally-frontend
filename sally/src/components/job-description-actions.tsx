@@ -17,8 +17,8 @@ export function JobDescriptionActions() {
       const result = await mockJobDescriptionApi.uploadJobDescription({ file });
       console.log('Upload successful:', result);
       
-      // Navigate to job description review page
-      router.push('/job-description/review');
+      // Navigate to conversational AI (step 5 in the flow)
+      router.push('/conversational-ai');
     } catch (error) {
       console.error('Upload failed:', error);
       // Handle error (show toast, etc.)
@@ -29,7 +29,8 @@ export function JobDescriptionActions() {
 
   const handleUploadClick = () => {
     // Trigger file input click
-    document.querySelector('input[type="file"]')?.click();
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fileInput?.click();
   };
 
   const handleBuildClick = async () => {
@@ -41,8 +42,8 @@ export function JobDescriptionActions() {
       });
       console.log('Build started:', result);
       
-      // Navigate to job builder
-      router.push('/job-description/builder');
+      // Navigate to conversational AI (step 5 in the flow)
+      router.push('/conversational-ai');
     } catch (error) {
       console.error('Build failed:', error);
       // Handle error (show toast, etc.)

@@ -35,8 +35,8 @@ export function CompanyOnboardingForm() {
       const result = await mockApiClient.register(registrationData);
       console.log('Registration successful:', result);
       
-      // Navigate to next step
-      router.push('/dashboard');
+      // Navigate to next step (job description - step 4 in the flow)
+      router.push('/job-description');
     } catch (error) {
       console.error('Registration failed:', error);
       // Handle error (show toast, etc.)
@@ -46,8 +46,8 @@ export function CompanyOnboardingForm() {
   };
 
   const handleSkip = () => {
-    // Navigate to dashboard without company setup
-    router.push('/dashboard');
+    // Navigate to job description without company setup
+    router.push('/job-description');
   };
 
   return (
@@ -61,7 +61,7 @@ export function CompanyOnboardingForm() {
         {/* Form with Input and Buttons */}
         <div className="space-y-4">
           {/* Input Field with Buttons */}
-          <div className="flex items-end gap-4">
+          <div className="flex gap-4">
             <div className="flex-1">
               <CompanyUrlInput
                 value={companyUrl}
@@ -71,13 +71,13 @@ export function CompanyOnboardingForm() {
               />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 pb-1">
-              {/* Continue Button with Left Icon */}
+            {/* Action Buttons - Aligned with input field */}
+            <div className="flex items-start gap-2 pt-7">
+              {/* Continue Button with Paper Plane Icon */}
               <button
                 onClick={handleContinue}
                 disabled={!companyUrl.trim() || !isValid || isSubmitting}
-                className="bg-[#8952E0] text-white p-2 rounded-md hover:bg-[#7A47CC] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+                className="bg-[#8952E0] text-white p-3 rounded-md hover:bg-[#7A47CC] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center h-12 w-12"
                 title="Continue"
               >
                 <svg
@@ -90,7 +90,8 @@ export function CompanyOnboardingForm() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M15 18l-6-6 6-6"/>
+                  <path d="m3 3 3 9-3 9 19-9Z"/>
+                  <path d="m6 12 13 0"/>
                 </svg>
               </button>
 
@@ -98,7 +99,7 @@ export function CompanyOnboardingForm() {
               <button
                 onClick={handleSkip}
                 disabled={isSubmitting}
-                className="px-3 py-2 text-[#6B7280] hover:text-[#1D2025] transition-colors disabled:opacity-50 text-sm"
+                className="px-4 py-3 text-[#6B7280] hover:text-[#1D2025] transition-colors disabled:opacity-50 text-sm h-12"
               >
                 Skip
               </button>
