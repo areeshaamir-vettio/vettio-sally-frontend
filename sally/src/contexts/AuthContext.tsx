@@ -76,6 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     AuthService.logout();
+
+    // Clear current role ID from session storage
+    // TODO: When job list is implemented, this should be updated to:
+    // 1. Keep role IDs in session storage for "Continue where you left off" feature
+    // 2. Only clear role IDs when user explicitly deletes them from job list
+    // 3. Consider moving role IDs to a more persistent storage (localStorage or backend)
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('current_role_id');
+    }
+
     setState({
       user: null,
       isAuthenticated: false,

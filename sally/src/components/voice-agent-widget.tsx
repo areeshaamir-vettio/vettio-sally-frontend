@@ -22,6 +22,8 @@ export function VoiceAgentWidget({
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const interimTranscriptRef = useRef('');
+  const finalTranscriptRef = useRef('');
+  const sendTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -37,7 +39,9 @@ export function VoiceAgentWidget({
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
+    // Only English language support
     recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       setIsProcessing(false);
@@ -57,18 +61,39 @@ export function VoiceAgentWidget({
         }
       }
 
+      // Show interim results in real-time
       interimTranscriptRef.current = interimTranscript;
-      setTranscript(interimTranscript);
+      setTranscript(interimTranscript || finalTranscriptRef.current);
 
-      // If we have a final transcript, send it
+      // If we have a final transcript, replace (not accumulate) the previous one
       if (finalTranscript.trim()) {
-        setIsProcessing(true);
-        onVoiceInput?.(finalTranscript.trim());
-        setTranscript('');
-        interimTranscriptRef.current = '';
+        // Replace with the latest final transcript (not accumulate)
+        finalTranscriptRef.current = finalTranscript.trim();
+        setTranscript(finalTranscriptRef.current);
 
-        // Reset processing state after a delay
-        setTimeout(() => setIsProcessing(false), 1000);
+        // Clear any existing timeout
+        if (sendTimeoutRef.current) {
+          clearTimeout(sendTimeoutRef.current);
+        }
+
+        // Set a new timeout to send after 1 second of silence
+        sendTimeoutRef.current = setTimeout(() => {
+          const textToSend = finalTranscriptRef.current.trim();
+
+          if (textToSend) {
+            setIsProcessing(true);
+            console.log('🎤 Sending last voice input after 1s delay:', textToSend);
+            onVoiceInput?.(textToSend);
+
+            // Clear the transcript
+            finalTranscriptRef.current = '';
+            setTranscript('');
+            interimTranscriptRef.current = '';
+
+            // Reset processing state after a delay
+            setTimeout(() => setIsProcessing(false), 1000);
+          }
+        }, 1000); // 1 second delay after user stops speaking
       }
     };
 
@@ -97,6 +122,12 @@ export function VoiceAgentWidget({
     recognitionRef.current = recognition;
 
     return () => {
+      // Clear any pending send timeout
+      if (sendTimeoutRef.current) {
+        clearTimeout(sendTimeoutRef.current);
+        sendTimeoutRef.current = null;
+      }
+
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
@@ -127,8 +158,17 @@ export function VoiceAgentWidget({
       }
     } else {
       recognitionRef.current.stop();
+
+      // Clear any pending send timeout when stopping
+      if (sendTimeoutRef.current) {
+        clearTimeout(sendTimeoutRef.current);
+        sendTimeoutRef.current = null;
+      }
+
+      // Clear all transcripts
       setTranscript('');
       interimTranscriptRef.current = '';
+      finalTranscriptRef.current = '';
     }
   }, [isActive, disabled, onListeningChange]);
 
@@ -194,6 +234,10 @@ export function VoiceAgentWidget({
             'Or type your message below'
           )}
         </p>
+        {/* English Only Indicator */}
+        <div className="mt-2 inline-flex items-center px-3 py-1 bg-blue-50 border border-blue-200 rounded-full">
+          <span className="text-xs font-medium text-blue-700">🇺🇸 English Only</span>
+        </div>
       </div>
 
       {/* Live Transcript Display */}
@@ -238,6 +282,7 @@ interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
+  maxAlternatives: number;
   start(): void;
   stop(): void;
   abort(): void;

@@ -38,6 +38,7 @@ export default function ConversationalAIPage() {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
+    // Only English language support
     utterance.lang = 'en-US';
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
@@ -68,12 +69,18 @@ export default function ConversationalAIPage() {
   };
 
   // Load role ID from session storage on mount
+  // TODO: When job list is implemented, update this to:
+  // 1. Show a job list/selection page instead of redirecting to job-description
+  // 2. Allow user to select from existing roles or create a new one
+  // 3. Add "Continue where you left off" feature with last accessed role
+  // 4. Consider using URL params for role ID (e.g., /conversational-ai?roleId=xxx)
   useEffect(() => {
     const storedRoleId = roleUtils.getCurrentRoleId();
 
     if (!storedRoleId) {
       console.warn('⚠️ No role ID found in session storage. Redirecting to job description page...');
       setError('No role found. Please start by creating a job description.');
+      // TODO: When job list exists, redirect to job list instead of job-description
       // Redirect to job description page after a short delay
       setTimeout(() => {
         router.push('/job-description');
