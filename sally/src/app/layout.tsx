@@ -35,7 +35,7 @@ export default function RootLayout({
           <SessionProvider>
             {children}
             {/* Session debug widget - shows from get-started until conversational-ai */}
-            <SessionDebugUntilConversationalAI />
+            {/* <SessionDebugUntilConversationalAI /> */}
           </SessionProvider>
         </AuthProvider>
 
