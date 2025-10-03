@@ -56,11 +56,11 @@ class ApiClient {
           try {
             const refreshToken = TokenManager.getRefreshToken();
             if (refreshToken) {
-              const response = await this.refreshToken({ refresh_token: refreshToken });
-              TokenManager.setTokens(response.access_token, response.refresh_token);
+              // Use AuthService.refreshToken which handles the correct API call
+              const newAccessToken = await AuthService.refreshToken();
 
               // Retry original request with new token
-              originalRequest.headers.Authorization = `Bearer ${response.access_token}`;
+              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
               return this.axiosInstance(originalRequest);
             }
           } catch (refreshError) {
@@ -136,6 +136,11 @@ class ApiClient {
       method: 'POST',
       data,
     });
+  }
+
+  // Public method for testing purposes
+  async makeRequest<T = any>(endpoint: string, options: AxiosRequestConfig = {}): Promise<T> {
+    return this.request<T>(endpoint, options);
   }
 
   // Social authentication endpoints

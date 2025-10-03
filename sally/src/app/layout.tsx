@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from '@/contexts/AuthContext';
+import { SessionProvider } from '@/contexts/SessionContext';
+import { SessionDebugUntilConversationalAI } from '@/components/session-debug';
+import Script from 'next/script';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,8 +32,39 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          {children}
+          <SessionProvider>
+            {children}
+            {/* Session debug widget - shows from get-started until conversational-ai */}
+            <SessionDebugUntilConversationalAI />
+          </SessionProvider>
         </AuthProvider>
+
+        {/* Load development utilities */}
+        {process.env.NODE_ENV === 'development' && (
+          <>
+            <Script id="refresh-token-tester" strategy="afterInteractive">
+              {`
+                import('/src/lib/test-refresh-token.js').then(module => {
+                  window.testRefreshToken = module.RefreshTokenTester;
+                  console.log('🧪 Refresh Token Tester loaded! Use window.testRefreshToken in console.');
+                }).catch(() => {
+                  console.log('⚠️ Refresh Token Tester not available');
+                });
+              `}
+            </Script>
+
+            <Script id="session-utils" strategy="afterInteractive">
+              {`
+                import('/src/lib/session-utils.js').then(module => {
+                  // Session utils are automatically attached to window in the module
+                  console.log('📋 Session Utils loaded! Use window.sessionUtils in console.');
+                }).catch(() => {
+                  console.log('⚠️ Session Utils not available');
+                });
+              `}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );

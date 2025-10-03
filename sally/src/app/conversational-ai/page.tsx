@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect } from 'react';
 import { Navbar } from '@/components/navbar';
 import { VoiceAgentWidget } from '@/components/voice-agent-widget';
 import { ProfileDrawer } from '@/components/profile-drawer';
@@ -5,6 +8,14 @@ import { ProfileDrawer } from '@/components/profile-drawer';
 export default function ConversationalAIPage() {
   const sessionId = 'session-1';
   const roadmapId = 'roadmap-1';
+
+  // Mark that user has reached conversational-ai page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('reached_conversational_ai', 'true');
+      console.log('🎯 User reached conversational-ai page - session debug widget will be hidden');
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F9FAFA]">

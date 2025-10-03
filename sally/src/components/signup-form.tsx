@@ -2,11 +2,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiClient } from '@/lib/api-client';
 import { RegisterRequest } from '@/types/auth';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/api-client';
 
 // Blocked personal email domains
 const BLOCKED_DOMAINS = [
@@ -148,7 +148,7 @@ const LinkedInIcon = () => (
 );
 
 export function SignUpForm() {
-  const router = useRouter();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -253,14 +253,11 @@ export function SignUpForm() {
         full_name: formData.fullName,
       };
 
-      const response = await apiClient.register(registerData);
-      console.log('Registration successful:', response);
+      await register(registerData);
+      console.log('Registration successful');
       setSuccess(true);
 
-      // Redirect to get-started page after successful registration
-      setTimeout(() => {
-        router.push('/get-started');
-      }, 2000);
+      // The register function will automatically redirect to get-started page
 
     } catch (error: unknown) {
       console.error('Registration failed:', error);
@@ -542,7 +539,7 @@ export function SignUpForm() {
           <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
             <div className="text-purple-800 text-sm font-medium mb-1">🔧 Server Issue</div>
             <div className="text-purple-700 text-sm">
-              We're experiencing technical difficulties. This is usually temporary.
+              We&apos;re experiencing technical difficulties. This is usually temporary.
               Please try again in a few moments or contact support if the issue persists.
             </div>
           </div>

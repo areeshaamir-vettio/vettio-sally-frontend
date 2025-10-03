@@ -3,11 +3,20 @@
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Plus } from 'lucide-react';
+import { useSession } from '@/contexts/SessionContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function WelcomeCard() {
   const router = useRouter();
+  const { generateJobId } = useSession();
+  const { user } = useAuth();
 
   const handleGetStarted = () => {
+    // Generate a fake job ID and store it in session
+    const jobId = generateJobId(user?.id);
+
+    console.log('🚀 Starting job creation with ID:', jobId);
+
     // Navigate to company onboarding (step 3 in the flow)
     router.push('/company-onboarding');
   };
@@ -33,12 +42,12 @@ export function WelcomeCard() {
       <div className="p-6 space-y-5">
         {/* Title */}
         <h1 className="text-xl font-semibold text-[#1D2025] leading-tight text-center mt-5">
-          Hey there! Let's create your first job to get started
+          Hey there! Let&apos;s create your first job to get started
         </h1>
 
         {/* Subtitle */}
         <p className="text-[#6B7280] text-md leading-relaxed text-center mt-4">
-          Great News! You don't have to write a job post.
+          Great News! You don&apos;t have to write a job post.
           <br />
           Just share what you have, and your AI agent will draft, refine, and structure it with you.
         </p>
@@ -49,7 +58,7 @@ export function WelcomeCard() {
           className="w-full bg-[#8952E0] text-white py-3 px-4 rounded-md hover:bg-[#7A47CC] transition-colors font-medium flex items-center justify-center gap-2"
         >
           <Plus size={20} />
-          Get Started
+          Create Your First Job
         </button>
       </div>
     </div>

@@ -1,13 +1,44 @@
-import Cookies from 'js-cookie';
 import { jwtVerify } from 'jose';
 import { API_CONFIG, API_ENDPOINTS } from './constants';
 import { User, LoginResponse } from '@/types/auth';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
+interface TokenRefreshRequest {
+  refresh_token: string;
+}
+
+interface TokenRefreshResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
 export class AuthService {
   private static readonly ACCESS_TOKEN_KEY = 'access_token';
   private static readonly REFRESH_TOKEN_KEY = 'refresh_token';
+
+  static getAccessToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
+  }
+
+  static getRefreshToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+  }
+
+  static setTokens(accessToken: string, refreshToken: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
+    localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+  }
+
+  static clearTokens(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+  }
 
   static async login(email: string, password: string): Promise<LoginResponse> {
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
@@ -23,55 +54,60 @@ export class AuthService {
 
     const data: LoginResponse = await response.json();
 
-    // Store tokens in cookies
-    Cookies.set(this.ACCESS_TOKEN_KEY, data.access_token, {
-      expires: 7,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
-    Cookies.set(this.REFRESH_TOKEN_KEY, data.refresh_token, {
-      expires: 30,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
+    // Store tokens in localStorage
+    this.setTokens(data.access_token, data.refresh_token);
 
     return data;
   }
 
   static async refreshToken(): Promise<string> {
-    const refreshToken = Cookies.get(this.REFRESH_TOKEN_KEY);
-    if (!refreshToken) throw new Error('No refresh token');
+    const refreshToken = this.getRefreshToken();
+
+    if (!refreshToken) {
+      this.logout();
+      throw new Error('No refresh token available');
+    }
+
+    console.log('🔄 Attempting token refresh...');
 
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${refreshToken}`
       },
+      body: JSON.stringify({
+        refresh_token: refreshToken  // ✅ Correct field name for your backend
+      } as TokenRefreshRequest),
     });
 
     if (!response.ok) {
-      AuthService.logout();
+      console.error('❌ Token refresh failed:', response.status, response.statusText);
+
+      // Log response body for debugging
+      try {
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+      } catch (e) {
+        console.error('Could not parse error response');
+      }
+
+      this.logout();
       throw new Error('Token refresh failed');
     }
 
-    const data = await response.json();
-    Cookies.set(this.ACCESS_TOKEN_KEY, data.access_token, {
-      expires: 7,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
+    const data: TokenRefreshResponse = await response.json();
 
+    // Update access token (keep same refresh token)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.ACCESS_TOKEN_KEY, data.access_token);
+    }
+
+    console.log('✅ Token refreshed successfully');
     return data.access_token;
   }
 
   static logout(): void {
-    Cookies.remove(this.ACCESS_TOKEN_KEY);
-    Cookies.remove(this.REFRESH_TOKEN_KEY);
-  }
-
-  static getAccessToken(): string | undefined {
-    return Cookies.get(this.ACCESS_TOKEN_KEY);
+    this.clearTokens();
   }
 
   static async isTokenValid(): Promise<boolean> {
@@ -100,30 +136,20 @@ export class AuthService {
 
 // Legacy compatibility - keeping minimal implementations for existing code
 export class TokenManager {
-  static getAccessToken(): string | undefined {
+  static getAccessToken(): string | null {
     return AuthService.getAccessToken();
   }
 
-  static getRefreshToken(): string | undefined {
-    return Cookies.get('refresh_token');
+  static getRefreshToken(): string | null {
+    return AuthService.getRefreshToken();
   }
 
   static setTokens(accessToken: string, refreshToken: string): void {
-    // This is handled by AuthService.login now
-    Cookies.set('access_token', accessToken, {
-      expires: 7,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
-    Cookies.set('refresh_token', refreshToken, {
-      expires: 30,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
+    AuthService.setTokens(accessToken, refreshToken);
   }
 
   static clearTokens(): void {
-    AuthService.logout();
+    AuthService.clearTokens();
   }
 
   static isTokenExpired(token: string): boolean {
@@ -131,7 +157,7 @@ export class TokenManager {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Date.now() / 1000;
       return payload.exp < currentTime;
-    } catch (error) {
+    } catch {
       return true;
     }
   }
@@ -140,7 +166,7 @@ export class TokenManager {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return payload.exp * 1000; // Convert to milliseconds
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -150,15 +176,15 @@ export class TokenManager {
 export class AuthUtils {
   static isAuthenticated(): boolean {
     const token = TokenManager.getAccessToken();
-    return token !== undefined && !TokenManager.isTokenExpired(token);
+    return token !== null && !TokenManager.isTokenExpired(token);
   }
 
   static logout(): void {
     AuthService.logout();
 
-    // Redirect to login page if we're in the browser
+    // Redirect to landing page if we're in the browser
     if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+      window.location.href = '/landing-page';
     }
   }
 
