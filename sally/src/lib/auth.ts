@@ -40,22 +40,33 @@ export class AuthService {
 
   static async refreshToken(): Promise<string> {
     const refreshToken = Cookies.get(this.REFRESH_TOKEN_KEY);
-    if (!refreshToken) throw new Error('No refresh token');
+    if (!refreshToken) {
+      AuthService.logout();
+      throw new Error('No refresh token available');
+    }
+
+    console.log('🔄 Attempting to refresh token...');
 
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${refreshToken}`
       },
+      body: JSON.stringify({
+        refresh_token: refreshToken  // ✅ Correct field name for backend
+      }),
     });
 
     if (!response.ok) {
+      console.error('❌ Token refresh failed:', response.status, response.statusText);
       AuthService.logout();
       throw new Error('Token refresh failed');
     }
 
     const data = await response.json();
+    console.log('✅ Token refreshed successfully');
+
+    // Store the new access token
     Cookies.set(this.ACCESS_TOKEN_KEY, data.access_token, {
       expires: 7,
       secure: process.env.NODE_ENV === 'production',
@@ -102,6 +113,10 @@ export class AuthService {
 export class TokenManager {
   static getAccessToken(): string | undefined {
     return AuthService.getAccessToken();
+  }
+
+  static getRefreshToken(): string | undefined {
+    return Cookies.get('refresh_token');
   }
 
   static setTokens(accessToken: string, refreshToken: string): void {
@@ -155,7 +170,7 @@ export class SessionManager {
     
     this.sessionTimer = setTimeout(() => {
       onSessionExpired();
-    }, APP_CONFIG.SESSION_TIMEOUT);
+    }, 30 * 60 * 1000); // 30 minutes
   }
 
   static clearSessionTimer(): void {

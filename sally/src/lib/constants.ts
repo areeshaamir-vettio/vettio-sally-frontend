@@ -22,6 +22,13 @@ export const API_ENDPOINTS = {
     LINKEDIN: '/api/v1/auth/linkedin/callback',
     MICROSOFT: '/api/v1/auth/microsoft/callback',
   },
+
+  // Intake
+  INTAKE : {
+    CREATE: '/api/v1/intake/roles',
+    GET: (id: string) => `/api/v1/intake/roles/${id}`,
+    LIST: '/api/v1/intake/roles',
+  },
   
   // User Management
   USERS: {

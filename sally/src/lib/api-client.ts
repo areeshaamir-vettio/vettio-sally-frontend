@@ -11,6 +11,7 @@ import {
   RefreshTokenRequest,
   RefreshTokenResponse
 } from '@/types/auth';
+import { CreateRoleRequest, Role } from '@/types/roles'; 
 import { API_CONFIG, API_ENDPOINTS } from './constants';
 import { AuthService, TokenManager, AuthUtils } from './auth';
 import { ErrorHandler, ApiError } from './errors';
@@ -36,9 +37,23 @@ class ApiClient {
     this.axiosInstance.interceptors.request.use(
       (config) => {
         const token = TokenManager.getAccessToken();
-        if (token && !TokenManager.isTokenExpired(token)) {
-          config.headers.Authorization = `Bearer ${token}`;
+        console.log('🔍 API Request interceptor - Token available:', !!token);
+
+        if (token) {
+          const isExpired = TokenManager.isTokenExpired(token);
+          console.log('🔍 API Request interceptor - Token expired:', isExpired);
+
+          if (!isExpired) {
+            config.headers.Authorization = `Bearer ${token}`;
+            console.log('✅ API Request interceptor - Added Authorization header');
+          } else {
+            console.log('⚠️ API Request interceptor - Token expired, not adding header');
+          }
+        } else {
+          console.log('❌ API Request interceptor - No token available');
         }
+
+        console.log('📤 API Request:', config.method?.toUpperCase(), config.url);
         return config;
       },
       (error) => Promise.reject(error)
@@ -213,6 +228,76 @@ class ApiClient {
       data: { token },
     });
   }
+
+
+  // Role/Intake endpoints
+  async createRole(data: CreateRoleRequest): Promise<Role> {
+    console.log('📝 Creating role with data:', data);
+
+    try {
+      const response = await this.request<Role>(API_ENDPOINTS.INTAKE.CREATE, {
+        method: 'POST',
+        data,
+      });
+
+      console.log('✅ Role created successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to create role:', error);
+      throw error;
+    }
+  }
+
+  async getRole(id: string): Promise<Role> {
+    console.log('🔍 Fetching role with ID:', id);
+
+    try {
+      const response = await this.request<Role>(API_ENDPOINTS.INTAKE.GET(id), {
+        method: 'GET',
+      });
+
+      console.log('✅ Role fetched successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch role:', error);
+      throw error;
+    }
+  }
+
+  async updateRole(id: string, data: Partial<CreateRoleRequest>): Promise<Role> {
+    console.log('📝 Updating role with ID:', id, 'Data:', data);
+
+    try {
+      const response = await this.request<Role>(API_ENDPOINTS.INTAKE.GET(id), {
+        method: 'PUT',
+        data,
+      });
+
+      console.log('✅ Role updated successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to update role:', error);
+      throw error;
+    }
+  }
+
+  async listRoles(): Promise<Role[]> {
+    console.log('📋 Fetching roles list');
+
+    try {
+      const response = await this.request<Role[]>(API_ENDPOINTS.INTAKE.LIST, {
+        method: 'GET',
+      });
+
+      console.log('✅ Roles list fetched successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to fetch roles list:', error);
+      throw error;
+    }
+  }
+
+
 }
 
 export const apiClient = new ApiClient();

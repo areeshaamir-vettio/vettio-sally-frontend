@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { SessionProvider } from '@/contexts/SessionContext';
 import { SessionDebugUntilConversationalAI } from '@/components/session-debug';
+import { RoleDebugDev } from '@/components/role-debug';
 import Script from 'next/script';
 
 const geistSans = Geist({
@@ -36,6 +37,8 @@ export default function RootLayout({
             {children}
             {/* Session debug widget - shows from get-started until conversational-ai */}
             {/* <SessionDebugUntilConversationalAI /> */}
+            {/* Role debug widget - shows current role information */}
+            {/* <RoleDebugDev /> */}
           </SessionProvider>
         </AuthProvider>
 
