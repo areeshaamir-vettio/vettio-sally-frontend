@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { MessageSquare, Mic, Volume2, VolumeX } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { VoiceAgentWidget } from '@/components/voice-agent-widget';
@@ -8,15 +9,15 @@ import { ChatInterface } from '@/components/chat-interface';
 import { ProfileDrawer } from '@/components/profile-drawer';
 import { conversationalAiApi, ConversationalApiError } from '@/lib/conversational-ai-api';
 import { RoleEnhancementResponse } from '@/types/role-enhancement';
-
-// TODO: Replace with dynamic role ID from URL params or props
-// For now, using a hardcoded role ID for testing
-const DEFAULT_ROLE_ID = 'JzK2caLFaqXs5B4vVZY8';
+import { roleUtils } from '@/hooks/useRole';
 
 type ConversationMode = 'chat' | 'voice';
 
 export default function ConversationalAIPage() {
-  const [roleId] = useState<string>(DEFAULT_ROLE_ID);
+  const router = useRouter();
+
+  // Get role ID from session storage
+  const [roleId, setRoleId] = useState<string | null>(null);
   const [conversationData, setConversationData] = useState<RoleEnhancementResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
@@ -66,8 +67,28 @@ export default function ConversationalAIPage() {
     }
   };
 
-  // Initialize conversation on mount
+  // Load role ID from session storage on mount
   useEffect(() => {
+    const storedRoleId = roleUtils.getCurrentRoleId();
+
+    if (!storedRoleId) {
+      console.warn('⚠️ No role ID found in session storage. Redirecting to job description page...');
+      setError('No role found. Please start by creating a job description.');
+      // Redirect to job description page after a short delay
+      setTimeout(() => {
+        router.push('/job-description');
+      }, 2000);
+      return;
+    }
+
+    console.log('✅ Loaded role ID from session storage:', storedRoleId);
+    setRoleId(storedRoleId);
+  }, [router]);
+
+  // Initialize conversation when role ID is available
+  useEffect(() => {
+    if (!roleId) return;
+
     const initializeConversation = async () => {
       try {
         setIsLoading(true);
@@ -106,7 +127,7 @@ export default function ConversationalAIPage() {
 
   // Handle sending a message
   const handleSendMessage = async (message: string) => {
-    if (!message.trim() || isSendingMessage) return;
+    if (!message.trim() || isSendingMessage || !roleId) return;
 
     try {
       setIsSendingMessage(true);
@@ -404,7 +425,7 @@ export default function ConversationalAIPage() {
         <ProfileDrawer
           sessionId={sessionId}
           roadmapId={roadmapId}
-          roleId={roleId}
+          roleId={roleId || undefined}
           roleData={conversationData?.role || null}
           isLoadingRole={isLoading}
           onError={handleError}

@@ -55,9 +55,9 @@ export function WelcomeCard() {
       console.log('🚀 Creating draft role for user:', user?.email, 'with data:', roleData);
 
       // Create role using the hook (automatically stores ID)
-      const role = await createRole(roleData);
+      // const role = await createRole(roleData);
 
-      console.log('✅ Draft role created successfully:', role);
+      // console.log('✅ Draft role created successfully:', role);
 
       // Navigate to company onboarding (step 3 in the flow)
       router.push('/company-onboarding');

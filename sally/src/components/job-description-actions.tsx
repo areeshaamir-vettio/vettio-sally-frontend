@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileUpload } from './file-upload';
 import { mockJobDescriptionApi } from '@/lib/mock-job-api';
+import { apiClient } from '@/lib/api-client';
+import { roleUtils } from '@/hooks/useRole';
 
 export function JobDescriptionActions() {
   const router = useRouter();
@@ -12,11 +14,22 @@ export function JobDescriptionActions() {
 
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
-    
+
     try {
       const result = await mockJobDescriptionApi.uploadJobDescription({ file });
       console.log('Upload successful:', result);
-      
+
+      // Create a new role with the uploaded job description
+      const newRole = await apiClient.createRole({
+        title: result.jobTitle,
+        raw_job_description: result.extractedText,
+        location_text: result.location,
+      });
+
+      // Save role ID to session storage
+      roleUtils.setCurrentRoleId(newRole.id);
+      console.log('✅ Role created and saved to session storage:', newRole.id);
+
       // Navigate to conversational AI (step 5 in the flow)
       router.push('/conversational-ai');
     } catch (error) {
@@ -35,13 +48,22 @@ export function JobDescriptionActions() {
 
   const handleBuildClick = async () => {
     setIsBuilding(true);
-    
+
     try {
       const result = await mockJobDescriptionApi.buildJobDescription({
         jobTitle: 'New Job Position'
       });
       console.log('Build started:', result);
-      
+
+      // Create a new role for building from scratch
+      const newRole = await apiClient.createRole({
+        // title: result.jobTitle,
+      });
+
+      // Save role ID to session storage
+      roleUtils.setCurrentRoleId(newRole.id);
+      console.log('✅ Role created and saved to session storage:', newRole.id);
+
       // Navigate to conversational AI (step 5 in the flow)
       router.push('/conversational-ai');
     } catch (error) {
