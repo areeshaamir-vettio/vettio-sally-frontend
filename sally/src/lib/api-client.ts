@@ -158,23 +158,20 @@ class ApiClient {
     return this.request<T>(endpoint, options);
   }
 
-  // Social authentication endpoints
-  async loginWithGoogle(): Promise<AuthResponse> {
-    return this.request<AuthResponse>(API_ENDPOINTS.AUTH.GOOGLE, {
-      method: 'POST',
-    });
+  // Social authentication endpoints - Updated to use proper OAuth flow
+  async loginWithGoogle(): Promise<void> {
+    const { OAuthService } = await import('./oauth');
+    return OAuthService.initiateOAuth('google');
   }
 
-  async loginWithGithub(): Promise<AuthResponse> {
-    return this.request<AuthResponse>(API_ENDPOINTS.AUTH.GITHUB, {
-      method: 'POST',
-    });
+  async loginWithGithub(): Promise<void> {
+    const { OAuthService } = await import('./oauth');
+    return OAuthService.initiateOAuth('github');
   }
 
-  async loginWithLinkedIn(): Promise<AuthResponse> {
-    return this.request<AuthResponse>(API_ENDPOINTS.AUTH.LINKEDIN, {
-      method: 'POST',
-    });
+  async loginWithLinkedIn(): Promise<void> {
+    const { OAuthService } = await import('./oauth');
+    return OAuthService.initiateOAuth('linkedin');
   }
 
   // Search functionality

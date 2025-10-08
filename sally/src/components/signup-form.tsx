@@ -161,7 +161,7 @@ export function SignUpForm() {
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
   const [showRetry, setShowRetry] = useState(false);
-  const [errorType, setErrorType] = useState<'validation' | 'server' | 'network' | null>(null);
+  const [errorType, setErrorType] = useState<'validation' | 'server' | 'network' | 'oauth' | null>(null);
 
   const handlePasswordChange = (password: string) => {
     setFormData({ ...formData, password });
@@ -339,6 +339,8 @@ export function SignUpForm() {
   const handleSocialAuth = async (provider: 'google' | 'github' | 'linkedin') => {
     try {
       setSocialLoading(provider);
+      clearMessages(); // Clear any existing error messages
+
       switch (provider) {
         case 'google':
           await apiClient.loginWithGoogle();
@@ -350,9 +352,12 @@ export function SignUpForm() {
           await apiClient.loginWithLinkedIn();
           break;
       }
+      // Note: For OAuth flow, the user will be redirected to the provider
+      // and then back to our callback page, so we don't need to handle success here
     } catch (error) {
       console.error(`${provider} authentication failed:`, error);
-      // TODO: Handle social auth error
+      setError(error instanceof Error ? error.message : `${provider} authentication failed`);
+      setErrorType('oauth');
     } finally {
       setSocialLoading(null);
     }

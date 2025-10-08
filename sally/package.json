@@ -6,12 +6,16 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "figma:server": "cd ../figma-mcp && node figma-mcp-server.js",
+    "figma:test": "cd ../figma-mcp && node test-figma-connection.js"
   },
   "dependencies": {
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "figma-js": "^1.16.1-0",
     "jose": "^6.1.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.544.0",

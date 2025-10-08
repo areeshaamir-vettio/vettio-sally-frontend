@@ -81,29 +81,56 @@ export class AuthService {
     Cookies.remove(this.REFRESH_TOKEN_KEY);
   }
 
+  static storeTokens(accessToken: string, refreshToken: string): void {
+    // Store tokens in cookies
+    Cookies.set(this.ACCESS_TOKEN_KEY, accessToken, {
+      expires: 7,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+    Cookies.set(this.REFRESH_TOKEN_KEY, refreshToken, {
+      expires: 30,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+  }
+
   static getAccessToken(): string | undefined {
     return Cookies.get(this.ACCESS_TOKEN_KEY);
   }
 
   static async isTokenValid(): Promise<boolean> {
     const token = this.getAccessToken();
-    if (!token) return false;
+    console.log('🔍 AuthService: Checking token validity...');
+    console.log('🎫 AuthService: Token exists:', !!token);
+
+    if (!token) {
+      console.log('❌ AuthService: No token found');
+      return false;
+    }
 
     try {
       // For development, we'll skip JWT verification since we don't have the secret
       // In production, you should verify the JWT properly
       if (process.env.NODE_ENV === 'development') {
+        console.log('🔧 AuthService: Development mode - checking token expiration');
         // Simple expiration check by decoding the payload
         const payload = JSON.parse(atob(token.split('.')[1]));
         const currentTime = Date.now() / 1000;
-        return payload.exp > currentTime;
+        const isValid = payload.exp > currentTime;
+        console.log('⏰ AuthService: Token expires at:', new Date(payload.exp * 1000));
+        console.log('⏰ AuthService: Current time:', new Date(currentTime * 1000));
+        console.log('✅ AuthService: Token valid:', isValid);
+        return isValid;
       }
 
       // For production with proper JWT secret
       const secret = new TextEncoder().encode(process.env.NEXT_PUBLIC_JWT_SECRET);
       await jwtVerify(token, secret);
+      console.log('✅ AuthService: Token valid (production)');
       return true;
-    } catch {
+    } catch (error) {
+      console.log('❌ AuthService: Token validation failed:', error);
       return false;
     }
   }

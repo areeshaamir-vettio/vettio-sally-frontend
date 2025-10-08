@@ -9,6 +9,7 @@ import { API_CONFIG, API_ENDPOINTS } from '@/lib/constants';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
+  loginWithOAuth: (user: User) => void;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
   refreshAuth: () => Promise<void>;
@@ -32,10 +33,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: true,
         isLoading: false,
       });
+
+      // Handle post-auth routing based on jobs
+      try {
+        const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
+        const redirectPath = await getPostAuthRedirectPath();
+        console.log('🔄 Login - Redirecting to:', redirectPath);
+        router.push(redirectPath);
+      } catch (routingError) {
+        console.error('❌ Post-auth routing failed:', routingError);
+        router.push('/get-started');
+      }
     } catch (error) {
       setState(prev => ({ ...prev, isLoading: false }));
       throw error;
     }
+  };
+
+  const loginWithOAuth = (user: User) => {
+    setState({
+      user,
+      isAuthenticated: true,
+      isLoading: false,
+    });
   };
 
   const register = async (data: RegisterRequest) => {
@@ -65,8 +85,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isLoading: false,
         });
 
-        // Navigate to get-started page after successful registration
-        router.push('/get-started');
+        // Handle post-auth routing based on jobs
+        try {
+          const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
+          const redirectPath = await getPostAuthRedirectPath();
+          console.log('🔄 Register - Redirecting to:', redirectPath);
+          router.push(redirectPath);
+        } catch (routingError) {
+          console.error('❌ Post-auth routing failed:', routingError);
+          router.push('/get-started');
+        }
       }
     } catch (error) {
       setState(prev => ({ ...prev, isLoading: false }));
@@ -97,34 +125,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAuth = async () => {
     try {
+      console.log('🔄 AuthContext: Starting refreshAuth...');
+      const token = AuthService.getAccessToken();
+      console.log('🎫 AuthContext: Token exists:', !!token);
+
       const isValid = await AuthService.isTokenValid();
+      console.log('✅ AuthContext: Token valid:', isValid);
+
       if (isValid) {
         // Fetch user data from /me endpoint
-        const token = AuthService.getAccessToken();
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.ME}`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const fullUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.ME}`;
+        console.log('📡 AuthContext: Fetching user data from:', fullUrl);
+        console.log('🎫 AuthContext: Using token:', token?.substring(0, 20) + '...');
+
+        const response = await fetch(fullUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
         });
+
+        console.log('📡 AuthContext: /me response status:', response.status);
+        console.log('📡 AuthContext: /me response headers:', Object.fromEntries(response.headers.entries()));
 
         if (response.ok) {
           const user = await response.json();
+          console.log('👤 AuthContext: User data received:', user);
           setState({ user, isAuthenticated: true, isLoading: false });
         } else {
-          logout();
+          const errorText = await response.text();
+          console.log('❌ AuthContext: /me endpoint failed with status:', response.status);
+          console.log('❌ AuthContext: Error response:', errorText);
+
+          // Check if it's a "pending approval" error
+          try {
+            const errorData = JSON.parse(errorText);
+            if (response.status === 403 && errorData.error?.message === "Account pending approval") {
+              console.log('⏳ AuthContext: Account pending approval detected');
+              // Set loading to false
+              setState({
+                user: null,
+                isAuthenticated: false,
+                isLoading: false,
+              });
+
+              // Only redirect if not already on pending approval page
+              if (typeof window !== 'undefined' && !window.location.pathname.includes('/pending-approval')) {
+                console.log('⏳ AuthContext: Redirecting to pending approval page');
+                router.push('/pending-approval');
+              } else {
+                console.log('⏳ AuthContext: Already on pending approval page, staying put');
+              }
+              return;
+            }
+          } catch (parseError) {
+            console.log('Failed to parse error response:', parseError);
+          }
+
+          // For other errors, don't immediately logout - just set loading to false
+          // This prevents automatic logout when backend is temporarily unavailable
+          setState(prev => ({ ...prev, isLoading: false }));
         }
       } else {
+        console.log('❌ AuthContext: Token invalid, logging out');
         logout();
       }
-    } catch {
-      logout();
+    } catch (error) {
+      console.log('💥 AuthContext: Error in refreshAuth:', error);
+      // Don't immediately logout on network errors - just set loading to false
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   useEffect(() => {
+    // Don't run auth refresh if we're on the pending approval page
+    // This prevents redirect loops when user refreshes the pending page
+    if (typeof window !== 'undefined' && window.location.pathname === '/pending-approval') {
+      console.log('🚫 AuthContext: Skipping auth refresh on pending approval page');
+      setState(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
+
     refreshAuth();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, refreshAuth }}>
+    <AuthContext.Provider value={{ ...state, login, loginWithOAuth, register, logout, refreshAuth }}>
       {children}
     </AuthContext.Provider>
   );

@@ -20,7 +20,8 @@ export function LoginForm() {
 
     try {
       await login(email, password);
-      router.push('/dashboard');
+      // Note: The login function in AuthContext now handles routing automatically
+      // based on whether the user has jobs or not
     } catch (err) {
       setError('Invalid email or password');
     } finally {

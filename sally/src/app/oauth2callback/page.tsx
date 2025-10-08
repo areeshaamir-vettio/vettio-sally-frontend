@@ -1,0 +1,164 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { OAuthService } from '@/lib/oauth';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface CallbackState {
+  status: 'loading' | 'success' | 'error';
+  message: string;
+}
+
+export default function OAuth2CallbackPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { loginWithOAuth } = useAuth();
+
+  const [state, setState] = useState<CallbackState>({
+    status: 'loading',
+    message: 'Processing authentication...'
+  });
+
+  const [hasProcessed, setHasProcessed] = useState(false);
+
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      // Prevent multiple executions
+      if (hasProcessed) {
+        console.log('🔍 OAuth2 Callback - Already processed, skipping');
+        return;
+      }
+
+      try {
+        console.log('🔍 OAuth2 Callback - Starting callback handler');
+        setHasProcessed(true);
+        console.log('🔍 OAuth2 Callback - Current URL:', window.location.href);
+        console.log('🔍 OAuth2 Callback - Search params:', searchParams.toString());
+        
+        // Get parameters from URL
+        const code = searchParams.get('code');
+        const state = searchParams.get('state');
+        const error = searchParams.get('error');
+        const errorDescription = searchParams.get('error_description');
+
+        console.log('🔍 OAuth2 Callback - Code:', code);
+        console.log('🔍 OAuth2 Callback - State:', state);
+        console.log('🔍 OAuth2 Callback - Error:', error);
+
+        // Handle OAuth errors
+        if (error) {
+          throw new Error(errorDescription || `OAuth Error: ${error}`);
+        }
+
+        // Validate required parameters
+        if (!code || !state) {
+          throw new Error('Missing authorization code or state parameter');
+        }
+
+        setState({
+          status: 'loading',
+          message: 'Exchanging authorization code for tokens...'
+        });
+
+        // Handle OAuth callback
+        console.log('🔄 OAuth2 Callback - Calling handleOAuthCallback...');
+        const tokenData = await OAuthService.handleOAuthCallback(code, state);
+        console.log('✅ OAuth2 Callback - Token data received:', tokenData);
+
+        setState({
+          status: 'loading',
+          message: 'Authentication successful! Redirecting...'
+        });
+
+        // Update auth context with user data
+        console.log('🔄 OAuth2 Callback - Updating auth context...');
+        console.log('👤 OAuth2 Callback - User data:', tokenData.user);
+        console.log('🖼️ OAuth2 Callback - Profile picture URL:', tokenData.user.profile_picture_url);
+        loginWithOAuth(tokenData.user);
+
+        setState({
+          status: 'success',
+          message: 'Authentication successful!'
+        });
+
+        // Check if user has jobs and redirect accordingly
+        console.log('🔄 OAuth2 Callback - Checking jobs for routing...');
+        const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
+        const redirectPath = await getPostAuthRedirectPath();
+        console.log('🔄 OAuth2 Callback - About to redirect to:', redirectPath);
+        router.push(redirectPath);
+
+      } catch (error) {
+        console.error('OAuth2 callback error:', error);
+        setState({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Authentication failed'
+        });
+
+        // Redirect to login page after error
+        setTimeout(() => {
+          router.push('/login?error=oauth_failed');
+        }, 3000);
+      }
+    };
+
+    // Only run if we have search params and haven't processed yet
+    if (searchParams.toString() && !hasProcessed) {
+      handleOAuthCallback();
+    }
+  }, [searchParams, router, loginWithOAuth, hasProcessed]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            {state.status === 'loading' && 'Authenticating...'}
+            {state.status === 'success' && 'Success!'}
+            {state.status === 'error' && 'Authentication Failed'}
+          </h2>
+          
+          <div className="mt-4">
+            {state.status === 'loading' && (
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              </div>
+            )}
+            
+            {state.status === 'success' && (
+              <div className="text-green-600">
+                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
+            
+            {state.status === 'error' && (
+              <div className="text-red-600">
+                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            )}
+          </div>
+          
+          <p className="mt-2 text-sm text-gray-600">
+            {state.message}
+          </p>
+          
+          {state.status === 'error' && (
+            <div className="mt-4">
+              <button
+                onClick={() => router.push('/login')}
+                className="text-indigo-600 hover:text-indigo-500 text-sm font-medium"
+              >
+                Return to login
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

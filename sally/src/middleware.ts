@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const protectedRoutes = ['/dashboard', '/profile', '/admin'];
-const publicRoutes = ['/login', '/register', '/'];
+const protectedRoutes = ['/dashboard', '/profile', '/admin', '/jobs', '/get-started', '/conversational-ai', '/job-description'];
+const publicRoutes = ['/login', '/register', '/', '/landing-page'];
 
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
@@ -40,7 +40,8 @@ export default async function middleware(req: NextRequest) {
   }
 
   if (isPublicRoute && isAuthenticated && path === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', req.nextUrl));
+    // Redirect to a route that will check jobs and redirect appropriately
+    return NextResponse.redirect(new URL('/auth-redirect', req.nextUrl));
   }
 
   return NextResponse.next();

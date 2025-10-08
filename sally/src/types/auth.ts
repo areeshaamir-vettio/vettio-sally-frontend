@@ -11,6 +11,8 @@ export interface User {
   is_admin: boolean;
   is_approved: boolean;
   email_verified: boolean;
+  profile_picture_url?: string;
+  profile_picture?: string;
   created_at: string;
   last_login?: string;
 }

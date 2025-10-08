@@ -18,10 +18,12 @@ export const API_ENDPOINTS = {
     VERIFY_EMAIL: '/api/v1/auth/verify-email',
     FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
     RESET_PASSWORD: '/api/v1/auth/reset-password',
-    GOOGLE: '/api/v1/auth/google/callback',
-    GITHUB: '/api/v1/auth/github/callback',
-    LINKEDIN: '/api/v1/auth/linkedin/callback',
-    MICROSOFT: '/api/v1/auth/microsoft/callback',
+    OAUTH_GOOGLE_AUTHORIZE: '/api/v1/auth/oauth/google/authorize',
+    OAUTH_GOOGLE_CALLBACK: '/api/v1/auth/oauth/google/callback',
+    OAUTH_LINKEDIN_AUTHORIZE: '/api/v1/auth/oauth/linkedin/authorize',
+    OAUTH_LINKEDIN_CALLBACK: '/api/v1/auth/oauth/linkedin/callback',
+    OAUTH_GITHUB_AUTHORIZE: '/api/v1/auth/oauth/github/authorize',
+    OAUTH_GITHUB_CALLBACK: '/api/v1/auth/oauth/github/callback',
   },
 
   // Intake

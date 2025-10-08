@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/AuthContext';
+import { AuthService } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { loginWithOAuth } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -38,8 +39,24 @@ export default function LoginPage() {
         last_login: new Date().toISOString(),
       };
       
-      login(mockUser);
-      router.push('/get-started');
+      // Store mock tokens for API calls to work
+      const mockTokenPayload = {
+        sub: mockUser.id,
+        email: mockUser.email,
+        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours from now
+        iat: Math.floor(Date.now() / 1000),
+      };
+      const mockToken = `mock.${btoa(JSON.stringify(mockTokenPayload))}.signature`;
+      AuthService.storeTokens(mockToken, 'mock_refresh_token');
+
+      loginWithOAuth(mockUser);
+
+      // Check if user has jobs and redirect accordingly
+      console.log('🔄 Login - Checking jobs for routing...');
+      const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
+      const redirectPath = await getPostAuthRedirectPath();
+      console.log('🔄 Login - About to redirect to:', redirectPath);
+      router.push(redirectPath);
     } catch (error: any) {
       console.error('Login failed:', error);
       setError('Invalid email or password. Please try again.');
