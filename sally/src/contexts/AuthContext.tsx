@@ -2,14 +2,14 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, AuthState, LoginRequest, RegisterRequest, CorporateRegisterRequest } from '@/types/auth';
+import { User, AuthState, RegisterRequest } from '@/types/auth';
 import { AuthService } from '@/lib/auth';
 import { apiClient } from '@/lib/api-client';
 import { API_CONFIG, API_ENDPOINTS } from '@/lib/constants';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  loginWithOAuth: (user: User) => void;
+  loginWithOAuth: (user: User) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
   refreshAuth: () => Promise<void>;
@@ -27,76 +27,108 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('🔄 AuthContext.login: Starting login process...');
       const response = await AuthService.login(email, password);
+      console.log('✅ AuthContext.login: Login successful, setting state...');
+
       setState({
         user: response.user,
         isAuthenticated: true,
         isLoading: false,
       });
 
+      console.log('🔄 AuthContext.login: Starting post-auth routing...');
       // Handle post-auth routing based on jobs
       try {
         const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
+        console.log('🔄 AuthContext.login: Calling getPostAuthRedirectPath...');
         const redirectPath = await getPostAuthRedirectPath();
-        console.log('🔄 Login - Redirecting to:', redirectPath);
+        console.log('🔄 AuthContext.login: Redirecting to:', redirectPath);
         router.push(redirectPath);
+        console.log('✅ AuthContext.login: Router.push called successfully');
       } catch (routingError) {
-        console.error('❌ Post-auth routing failed:', routingError);
+        console.error('❌ AuthContext.login: Post-auth routing failed:', routingError);
+        console.log('🔄 AuthContext.login: Falling back to /get-started');
         router.push('/get-started');
       }
     } catch (error) {
+      console.error('❌ AuthContext.login: Login failed:', error);
       setState(prev => ({ ...prev, isLoading: false }));
       throw error;
     }
   };
 
-  const loginWithOAuth = (user: User) => {
+  const loginWithOAuth = async (user: User) => {
+    console.log('🔄 AuthContext: Setting OAuth user state...');
     setState({
       user,
       isAuthenticated: true,
       isLoading: false,
     });
+    console.log('✅ AuthContext: OAuth user state updated');
+    // Note: OAuth callback pages handle their own routing
   };
 
   const register = async (data: RegisterRequest) => {
     try {
+      console.log('🔄 AuthContext.register: Starting registration process...');
       const response = await apiClient.register(data);
+      console.log('✅ AuthContext.register: Registration successful');
 
-      // If registration returns user data with tokens, automatically log them in
+      // Registration successful, now automatically log the user in to get tokens
       if (response) {
-        // Create a user object from the registration response
-        const user: User = {
-          id: response.id || `user_${Date.now()}`,
-          email: response.email || data.email,
-          full_name: response.full_name || data.full_name,
-          is_active: response.is_active ?? true,
-          organization_id: response.organization_id,
-          roles: response.roles || ["user"],
-          is_admin: response.is_admin ?? false,
-          is_approved: response.is_approved ?? true,
-          email_verified: response.email_verified ?? false,
-          created_at: response.created_at || new Date().toISOString(),
-          last_login: response.last_login
-        };
+        console.log('🔄 AuthContext.register: Auto-logging in user after registration...');
 
-        setState({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-
-        // Handle post-auth routing based on jobs
         try {
-          const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
-          const redirectPath = await getPostAuthRedirectPath();
-          console.log('🔄 Register - Redirecting to:', redirectPath);
-          router.push(redirectPath);
-        } catch (routingError) {
-          console.error('❌ Post-auth routing failed:', routingError);
-          router.push('/get-started');
+          // Use the login method to get authentication tokens
+          const loginResponse = await AuthService.login(data.email, data.password);
+          console.log('✅ AuthContext.register: Auto-login successful');
+
+          setState({
+            user: loginResponse.user,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+
+          // Handle post-auth routing based on jobs
+          try {
+            const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
+            const redirectPath = await getPostAuthRedirectPath();
+            console.log('🔄 Register - Redirecting to:', redirectPath);
+            router.push(redirectPath);
+          } catch (routingError) {
+            console.error('❌ Post-auth routing failed:', routingError);
+            router.push('/get-started');
+          }
+        } catch (loginError) {
+          console.error('❌ AuthContext.register: Auto-login failed:', loginError);
+          // If auto-login fails, still set user state but redirect to login
+          const user: User = {
+            id: response.id || `user_${Date.now()}`,
+            email: response.email || data.email,
+            full_name: response.full_name || data.full_name,
+            is_active: response.is_active ?? true,
+            organization_id: response.organization_id,
+            roles: response.roles || ["user"],
+            is_admin: response.is_admin ?? false,
+            is_approved: response.is_approved ?? true,
+            email_verified: response.email_verified ?? false,
+            created_at: response.created_at || new Date().toISOString(),
+            last_login: response.last_login
+          };
+
+          setState({
+            user,
+            isAuthenticated: false, // Not authenticated since login failed
+            isLoading: false,
+          });
+
+          // Redirect to login page with a message
+          router.push('/login?message=registration_success');
         }
       }
     } catch (error) {
+      console.error('❌ AuthContext.register: Registration failed:', error);
       setState(prev => ({ ...prev, isLoading: false }));
       throw error;
     }

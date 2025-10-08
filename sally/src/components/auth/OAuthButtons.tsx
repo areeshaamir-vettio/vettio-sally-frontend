@@ -3,7 +3,7 @@
 export function OAuthButtons() {
   const handleGoogleLogin = async () => {
     try {
-      const response = await fetch('/api/v1/auth/oauth/google/authorize?redirect_uri=http://localhost:3000/auth/callback');
+      const response = await fetch('/api/v1/auth/oauth/google/authorize?redirect_uri=http://localhost:3000/oauth2callback');
       const { authorization_url, state } = await response.json();
       
       localStorage.setItem('oauth_state', state);
@@ -15,7 +15,7 @@ export function OAuthButtons() {
 
   const handleGitHubLogin = async () => {
     try {
-      const response = await fetch('/api/v1/auth/oauth/github/authorize?redirect_uri=http://localhost:3000/auth/callback');
+      const response = await fetch('/api/v1/auth/oauth/github/authorize?redirect_uri=http://localhost:3000/oauth2callback');
       const { authorization_url, state } = await response.json();
       
       localStorage.setItem('oauth_state', state);
@@ -27,7 +27,7 @@ export function OAuthButtons() {
 
   const handleMicrosoftLogin = async () => {
     try {
-      const response = await fetch('/api/v1/auth/oauth/microsoft/authorize?redirect_uri=http://localhost:3000/auth/callback');
+      const response = await fetch('/api/v1/auth/oauth/microsoft/authorize?redirect_uri=http://localhost:3000/oauth2callback');
       const { authorization_url, state } = await response.json();
       
       localStorage.setItem('oauth_state', state);

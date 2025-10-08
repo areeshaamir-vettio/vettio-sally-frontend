@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Bell, Search, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -11,14 +11,25 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobs } from '@/hooks/useJobs';
 import { getJobDisplayTitle, getStatusColorClass, getPriorityColorClass, getRelativeTime } from '@/utils/job-helpers';
+import { CreateRoleModal } from '@/components/create-role-modal';
 
 export function JobsContent() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
   const { jobs, loading: jobsLoading, error: jobsError, fetchJobs } = useJobs();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleCreateJob = () => {
-    router.push('/get-started');
+    setIsCreateModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleJobCreated = () => {
+    // Refresh the jobs list after successful creation
+    fetchJobs();
   };
 
   return (
@@ -177,6 +188,13 @@ export function JobsContent() {
           </div>
         </div>
       </div>
+
+      {/* Create Role Modal */}
+      <CreateRoleModal
+        isOpen={isCreateModalOpen}
+        onClose={handleModalClose}
+        onSuccess={handleJobCreated}
+      />
     </div>
   );
 }

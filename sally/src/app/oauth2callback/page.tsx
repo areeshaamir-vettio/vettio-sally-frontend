@@ -24,18 +24,11 @@ export default function OAuth2CallbackPage() {
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
-      // Prevent multiple executions
-      if (hasProcessed) {
-        console.log('🔍 OAuth2 Callback - Already processed, skipping');
-        return;
-      }
-
       try {
-        console.log('🔍 OAuth2 Callback - Starting callback handler');
         setHasProcessed(true);
         console.log('🔍 OAuth2 Callback - Current URL:', window.location.href);
         console.log('🔍 OAuth2 Callback - Search params:', searchParams.toString());
-        
+
         // Get parameters from URL
         const code = searchParams.get('code');
         const state = searchParams.get('state');
@@ -83,11 +76,13 @@ export default function OAuth2CallbackPage() {
         });
 
         // Check if user has jobs and redirect accordingly
-        console.log('🔄 OAuth2 Callback - Checking jobs for routing...');
-        const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
-        const redirectPath = await getPostAuthRedirectPath();
-        console.log('🔄 OAuth2 Callback - About to redirect to:', redirectPath);
-        router.push(redirectPath);
+        setTimeout(async () => {
+          console.log('🔄 OAuth2 Callback - Checking jobs for routing...');
+          const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
+          const redirectPath = await getPostAuthRedirectPath();
+          console.log('🔄 OAuth2 Callback - About to redirect to:', redirectPath);
+          router.push(redirectPath);
+        }, 2000);
 
       } catch (error) {
         console.error('OAuth2 callback error:', error);
@@ -113,35 +108,31 @@ export default function OAuth2CallbackPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
+          <div className="mx-auto h-12 w-12 flex items-center justify-center">
+            {state.status === 'loading' && (
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            )}
+            {state.status === 'success' && (
+              <div className="rounded-full h-8 w-8 bg-green-100 flex items-center justify-center">
+                <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+            )}
+            {state.status === 'error' && (
+              <div className="rounded-full h-8 w-8 bg-red-100 flex items-center justify-center">
+                <svg className="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </div>
+            )}
+          </div>
+          
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
             {state.status === 'loading' && 'Authenticating...'}
             {state.status === 'success' && 'Success!'}
             {state.status === 'error' && 'Authentication Failed'}
           </h2>
-          
-          <div className="mt-4">
-            {state.status === 'loading' && (
-              <div className="flex justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              </div>
-            )}
-            
-            {state.status === 'success' && (
-              <div className="text-green-600">
-                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            )}
-            
-            {state.status === 'error' && (
-              <div className="text-red-600">
-                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-            )}
-          </div>
           
           <p className="mt-2 text-sm text-gray-600">
             {state.message}

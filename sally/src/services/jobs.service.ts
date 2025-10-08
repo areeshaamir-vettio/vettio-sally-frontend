@@ -89,59 +89,6 @@ export class JobsService {
    * @returns Promise<Job[]> List of jobs
    */
   async listJobs(options: JobsListOptions = {}): Promise<Job[]> {
-    // Check if we're using mock tokens (for development/testing)
-    const token = AuthService.getAccessToken();
-    if (token && token.startsWith('mock.')) {
-      console.log('🎭 Mock token detected, returning mock jobs list');
-
-      // For testing purposes, you can return mock jobs or empty array
-      // Currently returning empty array to test the "no jobs" flow
-      // Uncomment the lines below to test with mock jobs:
-
-      /*
-      const mockJobs: Job[] = [
-        {
-          id: 'mock-job-1',
-          organization_id: 'mock-org-1',
-          status: 'draft',
-          priority: 'high',
-          tags: [
-            { name: 'Frontend', category: 'skill', color: '#3B82F6' },
-            { name: 'React', category: 'technology', color: '#10B981' }
-          ],
-          metadata: {},
-          raw_job_description: 'Senior Frontend Developer\nWe are looking for an experienced React developer...',
-          jd_extraction_pending: false,
-          jd_extracted_at: new Date().toISOString(),
-          jd_extraction_error: null,
-          searchable_content: {
-            content: 'Senior Frontend Developer React JavaScript',
-            keywords: ['React', 'JavaScript', 'Frontend'],
-            language: 'en',
-            embedding_vector: []
-          },
-          attachments: [],
-          view_count: 15,
-          application_count: 3,
-          shortlist_count: 1,
-          hire_count: 0,
-          workflow_state: 'review',
-          approval_status: 'pending',
-          published_at: null,
-          closed_at: null,
-          created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-          updated_at: new Date().toISOString(),
-          created_by: 'mock-user-1',
-          updated_by: null,
-          sections: {}
-        }
-      ];
-      return mockJobs;
-      */
-
-      return [];
-    }
-
     const params = new URLSearchParams();
 
     if (options.status_filter) params.append('status_filter', options.status_filter);
@@ -151,12 +98,57 @@ export class JobsService {
 
     const url = `${this.baseURL}${API_ENDPOINTS.INTAKE.LIST}${params.toString() ? `?${params}` : ''}`;
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: this.getHeaders(),
-    });
+    console.log('🌐 Making API call to:', url);
+    console.log('🔑 Headers:', this.getHeaders());
+    console.log('📝 Options:', options);
 
-    return this.handleResponse<Job[]>(response);
+    // Create an AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getHeaders(),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (response.status === 401) {
+        console.log('🔄 Got 401, attempting token refresh...');
+        try {
+          await AuthService.refreshToken();
+          console.log('✅ Token refreshed, retrying listJobs...');
+          const retryResponse = await fetch(url, {
+            method: 'GET',
+            headers: this.getHeaders(),
+            signal: controller.signal,
+          });
+          const result = this.handleResponse<Job[]>(retryResponse);
+          console.log('📊 Jobs fetched after retry:', (await result).length);
+          return result;
+        } catch (refreshError) {
+          console.error('❌ Token refresh failed:', refreshError);
+          throw new Error('Authentication failed');
+        }
+      }
+
+      const result = await this.handleResponse<Job[]>(response);
+      console.log('📊 Jobs fetched successfully:', result.length);
+      console.log('📋 First 5 job titles:', result.slice(0, 5).map(job => job.sections?.basic_information?.title || 'Untitled'));
+      return result;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error('❌ listJobs error:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout - API call took too long');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -165,20 +157,90 @@ export class JobsService {
    */
   async hasJobs(): Promise<boolean> {
     try {
-      // Check if we're using mock tokens (for development/testing)
       const token = AuthService.getAccessToken();
-      if (token && token.startsWith('mock.')) {
-        console.log('🎭 Mock token detected, returning mock job status');
-        // For mock login, simulate having no jobs to test the get-started flow
+
+      if (!token) {
+        console.log('⚠️ No authentication token found');
         return false;
       }
 
-      const jobs = await this.listJobs({ limit: 1 });
-      return jobs.length > 0;
+      console.log('🔍 Checking if user has jobs...');
+
+      try {
+        const jobs = await this.listJobs({ limit: 1 });
+        const hasJobs = jobs.length > 0;
+        console.log(`✅ User has ${jobs.length} jobs (hasJobs: ${hasJobs})`);
+        return hasJobs;
+      } catch (apiError) {
+        // If we get a 401, try to refresh the token once
+        if (apiError instanceof Error && apiError.message.includes('401')) {
+          console.log('🔄 Got 401, attempting token refresh...');
+          try {
+            await AuthService.refreshToken();
+            console.log('✅ Token refreshed, retrying hasJobs...');
+            const jobs = await this.listJobs({ limit: 1 });
+            const hasJobs = jobs.length > 0;
+            console.log(`✅ User has ${jobs.length} jobs (hasJobs: ${hasJobs})`);
+            return hasJobs;
+          } catch (refreshError) {
+            console.error('❌ Token refresh failed:', refreshError);
+            return false;
+          }
+        }
+        throw apiError;
+      }
     } catch (error) {
       console.error('Failed to check if user has jobs:', error);
       // In case of error, assume they don't have jobs and redirect to get-started
       return false;
+    }
+  }
+
+  /**
+   * Create a new job/role
+   * @param jobData - Job creation data
+   * @returns Promise<Job> Created job details
+   */
+  async createJob(jobData: {
+    title?: string;
+    location?: string;
+    job_description?: string;
+  }): Promise<Job> {
+    const url = `${this.baseURL}${API_ENDPOINTS.INTAKE.CREATE}`;
+
+    console.log('🌐 Making API call to:', url);
+    console.log('📝 Job data:', jobData);
+    console.log('🔑 Headers:', this.getHeaders());
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(jobData),
+      });
+
+      // If we get a 401, try to refresh the token once
+      if (response.status === 401) {
+        console.log('🔄 Got 401, attempting token refresh...');
+        try {
+          await AuthService.refreshToken();
+          console.log('✅ Token refreshed, retrying createJob...');
+          const retryResponse = await fetch(url, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify(jobData),
+          });
+          return this.handleResponse<Job>(retryResponse);
+        } catch (refreshError) {
+          console.error('❌ Token refresh failed:', refreshError);
+          throw new Error('Authentication failed');
+        }
+      }
+
+      return this.handleResponse<Job>(response);
+    } catch (error) {
+      console.error('❌ Failed to create job:', error);
+      throw error;
     }
   }
 
@@ -188,12 +250,39 @@ export class JobsService {
    * @returns Promise<Job> Job details
    */
   async getJob(id: string): Promise<Job> {
-    const response = await fetch(`${this.baseURL}${API_ENDPOINTS.INTAKE.GET(id)}`, {
-      method: 'GET',
-      headers: this.getHeaders(),
-    });
+    const url = `${this.baseURL}${API_ENDPOINTS.INTAKE.GET(id)}`;
 
-    return this.handleResponse<Job>(response);
+    console.log('🌐 Making API call to:', url);
+    console.log('🔑 Headers:', this.getHeaders());
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+
+      // If we get a 401, try to refresh the token once
+      if (response.status === 401) {
+        console.log('🔄 Got 401, attempting token refresh...');
+        try {
+          await AuthService.refreshToken();
+          console.log('✅ Token refreshed, retrying getJob...');
+          const retryResponse = await fetch(url, {
+            method: 'GET',
+            headers: this.getHeaders(),
+          });
+          return this.handleResponse<Job>(retryResponse);
+        } catch (refreshError) {
+          console.error('❌ Token refresh failed:', refreshError);
+          throw new Error('Authentication failed');
+        }
+      }
+
+      return this.handleResponse<Job>(response);
+    } catch (error) {
+      console.error('❌ Failed to fetch job:', error);
+      throw error;
+    }
   }
 }
 

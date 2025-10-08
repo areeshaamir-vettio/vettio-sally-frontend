@@ -10,20 +10,26 @@ export class AuthService {
   private static readonly REFRESH_TOKEN_KEY = 'refresh_token';
 
   static async login(email: string, password: string): Promise<LoginResponse> {
+    console.log('🔄 AuthService.login: Starting login request...');
     const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
 
+    console.log('📡 AuthService.login: Response status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('❌ AuthService.login: Login failed:', errorData);
       throw new Error(errorData.message || 'Login failed');
     }
 
     const data: LoginResponse = await response.json();
+    console.log('✅ AuthService.login: Login response received');
 
     // Store tokens in cookies
+    console.log('🔑 AuthService.login: Storing tokens...');
     Cookies.set(this.ACCESS_TOKEN_KEY, data.access_token, {
       expires: 7,
       secure: process.env.NODE_ENV === 'production',
@@ -35,6 +41,7 @@ export class AuthService {
       sameSite: 'strict'
     });
 
+    console.log('✅ AuthService.login: Tokens stored successfully');
     return data;
   }
 

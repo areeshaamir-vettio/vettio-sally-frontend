@@ -2,7 +2,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,7 +42,6 @@ const LinkedInIcon = () => (
 );
 
 export default function LoginPage() {
-  const router = useRouter();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -59,11 +57,29 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await login(formData.email, formData.password);
-      router.push('/get-started');
-    } catch (error: any) {
-      console.error('Login failed:', error);
-      setError('Invalid email or password. Please try again.');
+      console.log('🔄 LoginPage: Starting login process...');
+
+      // Add a timeout to prevent infinite loading
+      const loginPromise = login(formData.email, formData.password);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Login timeout after 30 seconds')), 30000);
+      });
+
+      await Promise.race([loginPromise, timeoutPromise]);
+      console.log('✅ LoginPage: Login completed successfully');
+      // Note: The login function in AuthContext handles the redirect automatically
+      // based on whether the user has jobs or not
+    } catch (error: unknown) {
+      console.error('❌ LoginPage: Login failed:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          setError('Login is taking too long. Please try again.');
+        } else {
+          setError('Invalid email or password. Please try again.');
+        }
+      } else {
+        setError('Invalid email or password. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
