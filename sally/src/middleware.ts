@@ -6,6 +6,14 @@ const publicRoutes = ['/login', '/signup', '/'];
 
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
+
+  // Redirect old /jobs route to /dashboard
+  if (path === '/jobs' || path.startsWith('/jobs/') || path === '/jobs/') {
+    console.log(`🔄 Middleware: Redirecting ${path} to /dashboard`);
+    const redirectUrl = new URL('/dashboard', req.nextUrl);
+    return NextResponse.redirect(redirectUrl, { status: 301 }); // Permanent redirect
+  }
+
   const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route));
   const isPublicRoute = publicRoutes.includes(path);
 
