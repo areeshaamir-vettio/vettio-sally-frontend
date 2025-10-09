@@ -16,25 +16,30 @@ export default function JobSpecificDashboardPage() {
   useEffect(() => {
     const fetchJob = async () => {
       try {
+        console.log('🔄 JobSpecificDashboardPage: Starting to fetch job with ID:', jobId);
         setLoading(true);
         setError(null);
-        
+
         // Get the specific job by ID
         const jobData = await jobsService.getJob(jobId);
         setJob(jobData);
-        
-        console.log('✅ Job fetched successfully:', jobData);
+
+        console.log('✅ JobSpecificDashboardPage: Job fetched successfully:', jobData);
+        console.log('🆔 JobSpecificDashboardPage: Job ID for candidates:', jobData.id);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job';
         setError(errorMessage);
-        console.error('❌ Failed to fetch job:', err);
+        console.error('❌ JobSpecificDashboardPage: Failed to fetch job:', err);
       } finally {
         setLoading(false);
       }
     };
 
+    console.log('🚀 JobSpecificDashboardPage: useEffect triggered with jobId:', jobId);
     if (jobId) {
       fetchJob();
+    } else {
+      console.log('⚠️ JobSpecificDashboardPage: No jobId provided');
     }
   }, [jobId]);
 

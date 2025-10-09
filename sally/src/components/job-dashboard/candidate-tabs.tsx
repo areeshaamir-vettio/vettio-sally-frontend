@@ -59,17 +59,35 @@ export function Tabs({ tabs, activeTab, onTabChange }: TabsProps) {
 }
 
 // Candidate-specific tabs
-export function CandidateTabs() {
+interface CandidateTabsProps {
+  totalCount?: number;
+  newCount?: number;
+  shortlistedCount?: number;
+  rejectedCount?: number;
+}
+
+export function CandidateTabs({
+  totalCount = 0,
+  newCount = 0,
+  shortlistedCount = 0,
+  rejectedCount = 0
+}: CandidateTabsProps) {
+  // Ensure all counts are valid numbers
+  const safeTotal = Math.max(0, totalCount || 0);
+  const safeNew = Math.max(0, newCount || 0);
+  const safeShortlisted = Math.max(0, shortlistedCount || 0);
+  const safeRejected = Math.max(0, rejectedCount || 0);
+
   const tabs: Tab[] = [
-    { id: 'all', label: 'All Applications', count: 1234 },
-    { id: 'new', label: 'New', count: 156 },
-    { id: 'shortlisted', label: 'Shortlisted', count: 89 },
-    { id: 'rejected', label: 'Rejected', count: 342 }
+    { id: 'all', label: 'All Applications', count: safeTotal },
+    { id: 'new', label: 'New', count: safeNew },
+    { id: 'shortlisted', label: 'Shortlisted', count: safeShortlisted },
+    { id: 'rejected', label: 'Rejected', count: safeRejected }
   ];
 
   return (
-    <Tabs 
-      tabs={tabs} 
+    <Tabs
+      tabs={tabs}
       activeTab="all"
       onTabChange={(tabId) => {
         console.log('Tab changed to:', tabId);
