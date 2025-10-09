@@ -149,11 +149,6 @@ export function JobsSidebar() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-sm font-medium text-[#1D2025] truncate">{user.full_name}</p>
-                {user.is_admin && (
-                  <span className="px-1.5 py-0.5 bg-gradient-to-r from-[#8952E0] to-[#7A47CC] text-white text-xs font-medium rounded-full flex-shrink-0">
-                    Admin
-                  </span>
-                )}
               </div>
               <p className="text-xs text-[#6B7280] truncate">{user.email}</p>
             </div>

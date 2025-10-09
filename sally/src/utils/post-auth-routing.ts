@@ -38,8 +38,8 @@ export async function getPostAuthRedirectPath(retryCount = 0): Promise<string> {
     console.log('📊 hasJobs result:', hasJobs);
 
     if (hasJobs) {
-      console.log('✅ User has jobs, redirecting to /jobs');
-      return '/jobs';
+      console.log('✅ User has jobs, redirecting to /dashboard');
+      return '/dashboard';
     } else {
       console.log('📝 User has no jobs, redirecting to /get-started');
       return '/get-started';
@@ -72,7 +72,7 @@ export async function handlePostAuthRouting(): Promise<{
     console.log('🚀 Starting post-authentication routing...');
 
     const redirectPath = await getPostAuthRedirectPath();
-    const hasJobs = redirectPath === '/jobs';
+    const hasJobs = redirectPath === '/dashboard';
 
     console.log(`✅ Post-auth routing complete: hasJobs=${hasJobs}, redirectPath=${redirectPath}`);
 

@@ -151,8 +151,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: false,
       isLoading: false,
     });
-    // Navigate to landing page after logout
-    router.push('/landing-page');
+    // Navigate to home page after logout
+    router.push('/');
   };
 
   const refreshAuth = async () => {
@@ -230,12 +230,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Don't run auth refresh if we're on the pending approval page
-    // This prevents redirect loops when user refreshes the pending page
-    if (typeof window !== 'undefined' && window.location.pathname === '/pending-approval') {
-      console.log('🚫 AuthContext: Skipping auth refresh on pending approval page');
-      setState(prev => ({ ...prev, isLoading: false }));
-      return;
+    // Don't run auth refresh if we're on public pages
+    // This prevents redirect loops when user refreshes public pages
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      const publicPaths = ['/login', '/signup', '/', '/pending-approval'];
+
+      if (publicPaths.includes(currentPath)) {
+        console.log('🚫 AuthContext: Skipping auth refresh on public page:', currentPath);
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
     }
 
     refreshAuth();

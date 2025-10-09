@@ -36,6 +36,7 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsReturn {
 
       const queryOptions = {
         limit: 50, // Default to fetch up to 50 jobs
+        clear_cache: true, 
         ...fetchOptions,
         ...customOptions,
       };

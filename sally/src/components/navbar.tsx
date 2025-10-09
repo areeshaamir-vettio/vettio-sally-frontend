@@ -23,29 +23,7 @@ export function Navbar() {
           Vettio
         </Link>
 
-        {/* Navigation Links for authenticated users */}
-        {isAuthenticated && (
-          <div className="flex items-center gap-6">
-            <Link
-              href="/job-dashboard"
-              className="text-sm font-medium text-gray-700 hover:text-[#8952E0] transition-colors"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/conversational-ai"
-              className="text-sm font-medium text-gray-700 hover:text-[#8952E0] transition-colors"
-            >
-              AI Assistant
-            </Link>
-            <Link
-              href="/job-description"
-              className="text-sm font-medium text-gray-700 hover:text-[#8952E0] transition-colors"
-            >
-              Job Description
-            </Link>
-          </div>
-        )}
+
       </div>
 
 
@@ -72,11 +50,6 @@ export function Navbar() {
                 <span className="text-gray-700 text-sm font-medium">
                   {user?.full_name || user?.email || 'User'}
                 </span>
-                {user?.is_admin && (
-                  <span className="px-2 py-0.5 bg-gradient-to-r from-[#8952E0] to-[#7A47CC] text-white text-xs font-medium rounded-full">
-                    Admin
-                  </span>
-                )}
               </div>
             </div>
             <Button
@@ -97,7 +70,7 @@ export function Navbar() {
               Login
             </Link>
             <Link
-              href="/landing-page"
+              href="/signup"
               className="bg-[#8952E0] text-white px-4 py-2 rounded-md hover:bg-[#7A47CC] transition-colors"
             >
               Sign up
