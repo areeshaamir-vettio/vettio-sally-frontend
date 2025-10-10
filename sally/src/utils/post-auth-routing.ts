@@ -23,8 +23,11 @@ export async function getPostAuthRedirectPath(retryCount = 0): Promise<string> {
       return '/get-started';
     }
 
-    // Add a small delay to ensure token is properly stored and available
-    await new Promise(resolve => setTimeout(resolve, 100 + (retryCount * 200)));
+    // Add a delay to ensure token is properly stored and available
+    // Longer delay on first attempt, shorter on retries
+    const delay = retryCount === 0 ? 300 : (100 + (retryCount * 200));
+    await new Promise(resolve => setTimeout(resolve, delay));
+    console.log(`⏳ Waited ${delay}ms for token to be ready`);
 
     console.log('🔄 Calling jobsService.hasJobs()...');
 
@@ -47,10 +50,16 @@ export async function getPostAuthRedirectPath(retryCount = 0): Promise<string> {
   } catch (error) {
     console.error('❌ Error checking jobs for post-auth routing:', error);
 
-    // Check if it's a 401 error (unauthorized) and we can retry
-    if (error instanceof Error && error.message.includes('401') && retryCount < maxRetries) {
-      console.log(`🔑 401 error detected - retrying in ${(retryCount + 1) * 300}ms... (attempt ${retryCount + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 300));
+    // Check if it's an authentication error and we can retry
+    const isAuthError = error instanceof Error && (
+      error.message.includes('401') ||
+      error.message.includes('Authentication failed') ||
+      error.message.includes('Token refresh failed')
+    );
+
+    if (isAuthError && retryCount < maxRetries) {
+      console.log(`🔑 Auth error detected - retrying in ${(retryCount + 1) * 500}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 500));
       return getPostAuthRedirectPath(retryCount + 1);
     }
 

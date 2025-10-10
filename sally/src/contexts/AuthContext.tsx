@@ -6,6 +6,7 @@ import { User, AuthState, RegisterRequest } from '@/types/auth';
 import { AuthService } from '@/lib/auth';
 import { apiClient } from '@/lib/api-client';
 import { API_CONFIG, API_ENDPOINTS } from '@/lib/constants';
+import { useAuthRefresh } from '@/hooks/useAuthRefresh';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -24,6 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
     isLoading: true,
   });
+
+  // Automatically refresh tokens before they expire
+  useAuthRefresh();
 
   const login = async (email: string, password: string) => {
     try {
@@ -136,15 +140,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     AuthService.logout();
-
-    // Clear current role ID from session storage
-    // TODO: When job list is implemented, this should be updated to:
-    // 1. Keep role IDs in session storage for "Continue where you left off" feature
-    // 2. Only clear role IDs when user explicitly deletes them from job list
-    // 3. Consider moving role IDs to a more persistent storage (localStorage or backend)
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('current_role_id');
-    }
 
     setState({
       user: null,

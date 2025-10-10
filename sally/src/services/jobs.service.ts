@@ -132,7 +132,7 @@ export class JobsService {
           console.log('📊 Jobs fetched after retry:', (await result).length);
           return result;
         } catch (refreshError) {
-          console.error('❌ Token refresh failed:', refreshError);
+          console.warn('⚠️ Token refresh failed during listJobs (this may be expected during login):', refreshError);
           throw new Error('Authentication failed');
         }
       }
@@ -143,7 +143,14 @@ export class JobsService {
       return result;
     } catch (error) {
       clearTimeout(timeoutId);
-      console.error('❌ listJobs error:', error);
+
+      // Log as warning instead of error if it's an auth issue during login
+      if (error instanceof Error && error.message.includes('Authentication failed')) {
+        console.warn('⚠️ listJobs authentication error (may be expected during login):', error.message);
+      } else {
+        console.error('❌ listJobs error:', error);
+      }
+
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Request timeout - API call took too long');
       }
@@ -167,30 +174,34 @@ export class JobsService {
       console.log('🔍 Checking if user has jobs...');
 
       try {
-        const jobs = await this.listJobs({ limit: 1 });
+        const jobs = await this.listJobs({ limit: 50, clear_cache: true });
         const hasJobs = jobs.length > 0;
         console.log(`✅ User has ${jobs.length} jobs (hasJobs: ${hasJobs})`);
         return hasJobs;
       } catch (apiError) {
         // If we get a 401, try to refresh the token once
         if (apiError instanceof Error && apiError.message.includes('401')) {
-          console.log('🔄 Got 401, attempting token refresh...');
+          console.log('🔄 Got 401 during hasJobs check, attempting token refresh...');
           try {
             await AuthService.refreshToken();
             console.log('✅ Token refreshed, retrying hasJobs...');
-            const jobs = await this.listJobs({ limit: 1 });
+            const jobs = await this.listJobs({ limit: 50, clear_cache: true });
             const hasJobs = jobs.length > 0;
-            console.log(`✅ User has ${jobs.length} jobs (hasJobs: ${hasJobs})`);
+            console.log(`✅ User has ${jobs.length} jobs after retry (hasJobs: ${hasJobs})`);
             return hasJobs;
           } catch (refreshError) {
-            console.error('❌ Token refresh failed:', refreshError);
+            console.warn('⚠️ Token refresh failed during hasJobs check (this is expected during login):', refreshError);
+            console.log('ℹ️ Defaulting to hasJobs = false, user will be redirected to /get-started');
             return false;
           }
         }
-        throw apiError;
+
+        // For other errors, log and return false
+        console.warn('⚠️ Error checking jobs (defaulting to false):', apiError);
+        return false;
       }
     } catch (error) {
-      console.error('Failed to check if user has jobs:', error);
+      console.warn('⚠️ Failed to check if user has jobs (defaulting to false):', error);
       // In case of error, assume they don't have jobs and redirect to get-started
       return false;
     }

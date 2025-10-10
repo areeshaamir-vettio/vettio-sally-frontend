@@ -17,7 +17,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useJobs } from '@/hooks/useJobs';
+import { useJobsContext } from '@/contexts/JobsContext';
 
 interface SidebarNavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -29,7 +29,7 @@ interface SidebarNavItemProps {
 
 export function JobDashboardSidebar() {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { jobs, loading: jobsLoading, error: jobsError } = useJobs();
+  const { jobs, loading: jobsLoading, error: jobsError } = useJobsContext();
   const params = useParams();
   const currentJobId = params.jobId as string;
 

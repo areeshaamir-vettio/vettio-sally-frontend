@@ -48,39 +48,66 @@ export class AuthService {
   static async refreshToken(): Promise<string> {
     const refreshToken = Cookies.get(this.REFRESH_TOKEN_KEY);
     if (!refreshToken) {
-      AuthService.logout();
+      console.error('❌ No refresh token available');
+      // Don't logout immediately - let the user stay on the page
       throw new Error('No refresh token available');
     }
 
     console.log('🔄 Attempting to refresh token...');
 
-    const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        refresh_token: refreshToken  // ✅ Correct field name for backend
-      }),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_token: refreshToken  // ✅ Correct field name for backend
+        }),
+      });
 
-    if (!response.ok) {
-      console.error('❌ Token refresh failed:', response.status, response.statusText);
-      AuthService.logout();
-      throw new Error('Token refresh failed');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Token refresh failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+
+        // Only logout if refresh token is invalid (401/403)
+        // For other errors (500, network), keep the user logged in
+        if (response.status === 401 || response.status === 403) {
+          console.error('❌ Refresh token is invalid, logging out...');
+          AuthService.logout();
+        }
+
+        throw new Error(errorData.message || 'Token refresh failed');
+      }
+
+      const data = await response.json();
+      console.log('✅ Token refreshed successfully');
+
+      // Store the new access token with longer expiration
+      Cookies.set(this.ACCESS_TOKEN_KEY, data.access_token, {
+        expires: 7, // Cookie expires in 7 days
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      });
+
+      // Also update refresh token if provided
+      if (data.refresh_token) {
+        Cookies.set(this.REFRESH_TOKEN_KEY, data.refresh_token, {
+          expires: 30, // Cookie expires in 30 days
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        });
+      }
+
+      return data.access_token;
+    } catch (error) {
+      console.error('❌ Token refresh error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    console.log('✅ Token refreshed successfully');
-
-    // Store the new access token
-    Cookies.set(this.ACCESS_TOKEN_KEY, data.access_token, {
-      expires: 7,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
-
-    return data.access_token;
   }
 
   static logout(): void {

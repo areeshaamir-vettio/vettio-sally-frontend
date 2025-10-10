@@ -105,9 +105,26 @@ export interface RoleData {
   culture_value_fit: CultureValueFit;
   hiring_practicalities: HiringPracticalities;
   approval_notes: ApprovalNotes;
-  overall_completion: number;
+
+  // New API structure fields
+  basic_information_complete: boolean;
+  role_purpose_complete: boolean;
+  key_responsibilities_complete: boolean;
+  skills_qualifications_complete: boolean;
+  role_context_complete: boolean;
+  performance_kpis_complete: boolean;
+  compensation_benefits_complete: boolean;
+  culture_value_fit_complete: boolean;
+  hiring_practicalities_complete: boolean;
+  approval_notes_complete: boolean;
+
+  completed_sections: string[];
   current_section: string;
-  sections_summary: Record<string, boolean>;
+  remaining_sections: string[];
+
+  // Legacy fields (may still be present)
+  overall_completion?: number;
+  sections_summary?: Record<string, boolean>;
 }
 
 // ============================================================================

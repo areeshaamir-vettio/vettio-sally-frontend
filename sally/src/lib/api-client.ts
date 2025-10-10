@@ -40,14 +40,15 @@ class ApiClient {
         console.log('🔍 API Request interceptor - Token available:', !!token);
 
         if (token) {
-          const isExpired = TokenManager.isTokenExpired(token);
-          console.log('🔍 API Request interceptor - Token expired:', isExpired);
+          // Always add the token, even if expired
+          // The response interceptor will handle token refresh if needed
+          config.headers.Authorization = `Bearer ${token}`;
 
-          if (!isExpired) {
-            config.headers.Authorization = `Bearer ${token}`;
-            console.log('✅ API Request interceptor - Added Authorization header');
+          const isExpired = TokenManager.isTokenExpired(token);
+          if (isExpired) {
+            console.log('⚠️ API Request interceptor - Token expired, but adding header (will refresh if 401)');
           } else {
-            console.log('⚠️ API Request interceptor - Token expired, not adding header');
+            console.log('✅ API Request interceptor - Added valid Authorization header');
           }
         } else {
           console.log('❌ API Request interceptor - No token available');

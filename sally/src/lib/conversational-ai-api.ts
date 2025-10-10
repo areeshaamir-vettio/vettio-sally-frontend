@@ -150,7 +150,15 @@ class ConversationalAiApiClient {
    */
   private async post<T>(endpoint: string, data?: Record<string, unknown>): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
+    console.log('🌐 POST Request:', {
+      url,
+      endpoint,
+      baseUrl: this.baseUrl,
+      data,
+      headers: this.getHeaders()
+    });
+
     try {
       let response = await fetch(url, {
         method: 'POST',
@@ -158,10 +166,19 @@ class ConversationalAiApiClient {
         body: data ? JSON.stringify(data) : undefined,
       });
 
+      console.log('📡 POST Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url
+      });
+
       // If unauthorized, attempt a token refresh once and retry
       if (response.status === 401) {
+        console.log('🔄 Attempting token refresh...');
         try {
           const newAccessToken = await AuthService.refreshToken();
+          console.log('✅ Token refreshed, retrying request...');
           response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -170,17 +187,27 @@ class ConversationalAiApiClient {
             },
             body: data ? JSON.stringify(data) : undefined,
           });
+          console.log('📡 Retry Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+          });
         } catch (e) {
+          console.error('❌ Token refresh failed:', e);
           // Refresh failed, propagate original error handling below
         }
       }
 
       if (!response.ok) {
+        console.error('❌ Response not OK, handling error...');
         await handleApiError(response);
       }
 
-      return await response.json();
+      const responseData = await response.json();
+      console.log('✅ POST Success - Response data:', responseData);
+      return responseData;
     } catch (error) {
+      console.error('❌ POST Request failed:', error);
       if (error instanceof ConversationalApiError) {
         throw error;
       }
@@ -209,16 +236,16 @@ class ConversationalAiApiClient {
   /**
    * Send a message in the conversation
    * POST /api/v1/intake/roles/{role_id}/enhance
-   * 
+   *
    * @param roleId - The ID of the role
    * @param message - The user's message
    * @returns Updated conversation state with AI response
    */
   async sendMessage(roleId: string, message: string): Promise<RoleEnhancementResponse> {
-    const requestBody: SendMessageRequest = {
+    const requestBody = {
       user_message: message,
     };
-    
+
     return this.post<RoleEnhancementResponse>(
       `/intake/roles/${roleId}/enhance`,
       requestBody
