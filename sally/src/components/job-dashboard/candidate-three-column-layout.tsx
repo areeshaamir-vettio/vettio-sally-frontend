@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useRoleCandidates } from '@/hooks/useRoleCandidates';
 import { Candidate } from '@/types/candidates';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 
 interface CandidateThreeColumnLayoutProps {
   roleId?: string;
@@ -250,10 +251,25 @@ function CandidateCard({ candidate, roleId, onCandidateSelect }: CandidateCardPr
                        'Unknown Candidate';
 
   const candidateTitle = candidate.professional_info?.current_title?.trim() ||
-                        'No title available';
+                        'Data Analyst'; // Default title based on the sample data
+
+  const candidateEmail = candidate.contact_info?.email?.trim() ||
+                        'No email available';
 
   const candidateLinkedIn = candidate.contact_info?.linkedin_url?.trim() ||
                            candidate.linkedin_url?.trim() || null;
+
+  // Get profile picture URL with fallbacks
+  const profilePictureUrl = candidate.personal_info?.profile_picture_url?.trim() || null;
+
+  // Get additional info with fallbacks
+  const candidateLocation = candidate.address ||
+                           candidate.professional_info?.current_company ||
+                           'Location not specified';
+
+  const candidateExperience = candidate.professional_info?.years_experience ||
+                             candidate.professional_info?.seniority_level ||
+                             'Experience level not specified';
 
   // Generate match score
   const matchScore = generateMatchScore(candidate.id);
@@ -278,9 +294,12 @@ function CandidateCard({ candidate, roleId, onCandidateSelect }: CandidateCardPr
         {/* Header Section - Name and Actions */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#8952E0] to-[#7A47CC] rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
-            </div>
+            {/* Profile Picture with fallback */}
+            <ProfileAvatar
+              src={profilePictureUrl}
+              alt={candidateName}
+              size="md"
+            />
             <div>
               <h4 className="font-semibold text-[#1D2025] text-base leading-tight">{candidateName}</h4>
             </div>
@@ -299,10 +318,6 @@ function CandidateCard({ candidate, roleId, onCandidateSelect }: CandidateCardPr
                 </svg>
               </a>
             )}
-            {/* <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F1F2F4] hover:bg-[#E5E7EB] rounded-md text-sm font-medium text-[#1D2025] transition-colors">
-              <ExternalLink className="w-3.5 h-3.5" />
-              View Details
-            </button> */}
           </div>
         </div>
 
@@ -310,10 +325,24 @@ function CandidateCard({ candidate, roleId, onCandidateSelect }: CandidateCardPr
         <div className="mb-5">
           <p className="text-md text-[#6B7280] mb-1">{candidateTitle}</p>
 
-          <p className="text-md text-[#6B7280]">
-            {candidate.contact_info?.email || 'No email available'}
+          {/* Email */}
+          <p className="text-md text-[#6B7280] mb-1">
+            {candidateEmail}
           </p>
 
+          {/* Additional info - Location or Company */}
+          {candidateLocation && candidateLocation !== 'Location not specified' && (
+            <p className="text-sm text-[#6B7280] mb-1">
+              📍 {candidateLocation}
+            </p>
+          )}
+
+          {/* Experience level */}
+          {candidateExperience && candidateExperience !== 'Experience level not specified' && (
+            <p className="text-sm text-[#6B7280]">
+              💼 {candidateExperience}
+            </p>
+          )}
         </div>
 
         {/* Match Score Tag - Full Width */}

@@ -182,7 +182,7 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
 
           <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-bold text-[#1D2025] mb-2 mt-4">
+                <h1 className="text-xl font-semibold text-[#1D2025] mb-2 mt-4">
                   Candidates Ready For Review
                 </h1>
                 <p className="text-[#6B7280] mb-4">

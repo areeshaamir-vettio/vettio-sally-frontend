@@ -5,6 +5,7 @@ import { X, User, Mail, Phone, Linkedin, GraduationCap, MapPin, Calendar, Clock,
 import { Button } from '@/components/ui/button';
 import { Job } from '@/services/jobs.service';
 import { Candidate, CandidateEducation } from '@/types/candidates';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 
 interface CandidateDetailPanelProps {
   job: Job;
@@ -19,9 +20,12 @@ export function CandidateDetailPanel({ job, candidate, onClose }: CandidateDetai
                        'Unknown Candidate';
 
   const candidateTitle = candidate.professional_info?.current_title?.trim() ||
-                        'Software Engineer';
+                        'Data Analyst'; // Default title based on sample data
 
-  const candidateEmail = candidate.contact_info?.email?.trim() || 'john.doe@example.com';
+  const candidateEmail = candidate.contact_info?.email?.trim() || 'No email available';
+
+  // Get profile picture URL with fallback
+  const profilePictureUrl = candidate.personal_info?.profile_picture_url?.trim() || null;
 
   // Generate match score (mock data)
   const generateMatchScore = (candidateId: string) => {
@@ -52,9 +56,12 @@ export function CandidateDetailPanel({ job, candidate, onClose }: CandidateDetai
 
         {/* Candidate Profile Header */}
         <div className="flex items-start gap-4 mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] rounded-full flex items-center justify-center flex-shrink-0">
-            <User className="w-8 h-8 text-white" />
-          </div>
+          {/* Profile Picture with fallback */}
+          <ProfileAvatar
+            src={profilePictureUrl}
+            alt={candidateName}
+            size="lg"
+          />
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-semibold text-[#111827] mb-1">{candidateName}</h1>
             <p className="text-base font-normal text-[#6B7280] mb-2">{candidateTitle}</p>
@@ -117,6 +124,9 @@ export function CandidateDetailPanel({ job, candidate, onClose }: CandidateDetai
 
         {/* Education Section */}
         <EducationSection education={candidate.education} />
+
+        {/* Certifications Section */}
+        <CertificationsSection certifications={candidate.certifications} />
       </div>
     </div>
   );
@@ -124,38 +134,76 @@ export function CandidateDetailPanel({ job, candidate, onClose }: CandidateDetai
 
 // Details Section Component
 function DetailsSection({ candidate }: { candidate: Candidate }) {
+  // Extract actual data with fallbacks
+  const salaryExpectation = candidate.professional_info?.expected_salary
+    ? `$${candidate.professional_info.expected_salary.toLocaleString()}`
+    : candidate.professional_info?.current_salary
+    ? `$${candidate.professional_info.current_salary.toLocaleString()} (current)`
+    : 'Not specified';
+
+  const noticePeriod = candidate.professional_info?.notice_period || 'Not specified';
+
+  const appliedDate = candidate.discovered_at
+    ? new Date(candidate.discovered_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    : 'Not available';
+
+  const experienceYears = candidate.professional_info?.years_experience
+    ? `${candidate.professional_info.years_experience} years`
+    : candidate.professional_info?.seniority_level || 'Not specified';
+
+  const workAuthorization = candidate.personal_info?.work_authorization || 'Not specified';
+
+  const willingToRelocate = candidate.professional_info?.willing_to_relocate !== undefined
+    ? (candidate.professional_info.willing_to_relocate ? 'Yes' : 'No')
+    : 'Not specified';
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-[#111827] mb-4">Details</h3>
       <div className="space-y-4">
-        {/* Job Applied Status */}
+        {/* Experience */}
         <div className="flex justify-between items-center py-2">
-          <span className="text-sm font-normal text-[#6B7280]">Job Applied</span>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-[#10B981]" />
-            <span className="text-sm font-medium text-[#111827]">Interview Scheduled</span>
-          </div>
+          <span className="text-sm font-normal text-[#6B7280]">Experience</span>
+          <span className="text-sm font-medium text-[#111827]">{experienceYears}</span>
         </div>
         <div className="border-b border-[#F3F4F6]"></div>
 
         {/* Salary Expectation */}
         <div className="flex justify-between items-center py-2">
           <span className="text-sm font-normal text-[#6B7280]">Salary Expectation</span>
-          <span className="text-sm font-medium text-[#111827]">$120,000 - $140,000</span>
+          <span className="text-sm font-medium text-[#111827]">{salaryExpectation}</span>
         </div>
         <div className="border-b border-[#F3F4F6]"></div>
 
         {/* Notice Period */}
         <div className="flex justify-between items-center py-2">
-          <span className="text-sm font-normal text-[#6B7280]">Notice Period:</span>
-          <span className="text-sm font-medium text-[#111827]">2 weeks</span>
+          <span className="text-sm font-normal text-[#6B7280]">Notice Period</span>
+          <span className="text-sm font-medium text-[#111827]">{noticePeriod}</span>
+        </div>
+        <div className="border-b border-[#F3F4F6]"></div>
+
+        {/* Work Authorization */}
+        <div className="flex justify-between items-center py-2">
+          <span className="text-sm font-normal text-[#6B7280]">Work Authorization</span>
+          <span className="text-sm font-medium text-[#111827]">{workAuthorization}</span>
+        </div>
+        <div className="border-b border-[#F3F4F6]"></div>
+
+        {/* Willing to Relocate */}
+        <div className="flex justify-between items-center py-2">
+          <span className="text-sm font-normal text-[#6B7280]">Willing to Relocate</span>
+          <span className="text-sm font-medium text-[#111827]">{willingToRelocate}</span>
         </div>
         <div className="border-b border-[#F3F4F6]"></div>
 
         {/* Applied Date */}
         <div className="flex justify-between items-center py-2">
-          <span className="text-sm font-normal text-[#6B7280]">Applied Date</span>
-          <span className="text-sm font-medium text-[#111827]">Dec 1, 2024</span>
+          <span className="text-sm font-normal text-[#6B7280]">Discovered Date</span>
+          <span className="text-sm font-medium text-[#111827]">{appliedDate}</span>
         </div>
       </div>
     </div>
@@ -280,22 +328,31 @@ function ExperienceSection({ experience }: { experience?: any }) {
 
 // Education Section Component
 function EducationSection({ education }: { education?: CandidateEducation[] | any }) {
-  const mockEducation = [
-    {
-      degree: 'Masters of Science in Computer Sciences',
-      institution: 'Columbia University',
-      location: 'New York, NY',
-      duration: '2020 - 2022'
-    },
-    {
-      degree: 'Bachelor of Science in Computer Science',
-      institution: 'University of California, Berkeley',
-      location: 'Berkeley, CA',
-      duration: '2016 - 2020'
-    }
-  ];
+  // Process actual education data or provide fallback
+  let educationData = [];
 
-  const educationData = education || mockEducation;
+  if (education && Array.isArray(education) && education.length > 0) {
+    educationData = education.map((edu: any) => ({
+      degree: edu.degree || 'Degree not specified',
+      institution: edu.institution || 'Institution not specified',
+      location: edu.location || '',
+      duration: edu.start_date && edu.end_date
+        ? `${new Date(edu.start_date).getFullYear()} - ${new Date(edu.end_date).getFullYear()}`
+        : edu.duration || 'Duration not specified',
+      field_of_study: edu.field_of_study || ''
+    }));
+  } else {
+    // Fallback education data
+    educationData = [
+      {
+        degree: 'Business Analytics & Accounting',
+        institution: 'Farmingdale State College',
+        location: 'New York, NY',
+        duration: '2022 - 2025',
+        field_of_study: 'Data'
+      }
+    ];
+  }
 
   return (
     <div>
@@ -305,7 +362,12 @@ function EducationSection({ education }: { education?: CandidateEducation[] | an
         {educationData.map((edu: any, index: number) => (
           <div key={index} className="border-l-2 border-[#E5E7EB] pl-4 relative">
             <div className="absolute w-2 h-2 bg-[#8B5CF6] rounded-full -left-1 top-1"></div>
-            <h4 className="font-medium text-[#111827] mb-1">{edu.degree}</h4>
+            <h4 className="font-medium text-[#111827] mb-1">
+              {edu.degree}
+              {edu.field_of_study && edu.field_of_study !== edu.degree && (
+                <span className="text-sm font-normal text-[#6B7280]"> - {edu.field_of_study}</span>
+              )}
+            </h4>
             <div className="flex items-center gap-2 text-sm font-normal text-[#6B7280] mb-1">
               <span className="font-medium">{edu.institution}</span>
               {edu.location && (
@@ -321,6 +383,71 @@ function EducationSection({ education }: { education?: CandidateEducation[] | an
             <div className="flex items-center gap-1 text-sm font-normal text-[#6B7280]">
               <Calendar className="w-3 h-3" />
               <span>{edu.duration}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Certifications Section Component
+function CertificationsSection({ certifications }: { certifications?: any[] }) {
+  // Process actual certifications data or provide fallback
+  let certificationsData = [];
+
+  if (certifications && Array.isArray(certifications) && certifications.length > 0) {
+    certificationsData = certifications.map((cert: any) => ({
+      name: cert.name || 'Certification not specified',
+      issuing_organization: cert.issuing_organization || 'Organization not specified',
+      issue_date: cert.issue_date
+        ? new Date(cert.issue_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short'
+          })
+        : 'Date not specified',
+      expiry_date: cert.expiry_date
+        ? new Date(cert.expiry_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short'
+          })
+        : null,
+      credential_id: cert.credential_id || null
+    }));
+  }
+
+  // Only render if there are certifications
+  if (certificationsData.length === 0) {
+    return null;
+  }
+
+  return (
+    <div>
+      <div className="border-b border-[#E5E7EB] mb-6"></div>
+      <h3 className="text-lg font-semibold text-[#111827] mb-4">Certifications</h3>
+      <div className="space-y-4">
+        {certificationsData.map((cert: any, index: number) => (
+          <div key={index} className="border border-[#E5E7EB] rounded-lg p-4">
+            <h4 className="font-medium text-[#111827] mb-2">{cert.name}</h4>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+                <span className="font-medium">{cert.issuing_organization}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+                <Calendar className="w-3 h-3" />
+                <span>Issued: {cert.issue_date}</span>
+                {cert.expiry_date && (
+                  <>
+                    <span>•</span>
+                    <span>Expires: {cert.expiry_date}</span>
+                  </>
+                )}
+              </div>
+              {cert.credential_id && (
+                <div className="text-xs text-[#6B7280]">
+                  Credential ID: {cert.credential_id}
+                </div>
+              )}
             </div>
           </div>
         ))}
