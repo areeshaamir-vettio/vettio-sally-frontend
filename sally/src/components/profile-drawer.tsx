@@ -83,7 +83,7 @@ export function ProfileDrawer({ roadmapId, roleId, roleData, isLoadingRole = fal
         <button
           onClick={handlePauseSession}
           disabled={isPausing || !roleId}
-          className="w-full bg-[#F3F4F6] text-[#374151] py-2 px-4 rounded-md font-medium hover:bg-[#E5E7EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          className="w-full bg-[#F3F4F6] text-[#1D2025] py-2 px-4 rounded-md font-semibold hover:bg-[#E5E7EB] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm leading-5"
         >
           {isPausing ? 'Pausing...' : 'Pause and Resume Later'}
         </button>

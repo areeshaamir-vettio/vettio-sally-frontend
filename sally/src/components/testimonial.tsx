@@ -6,8 +6,8 @@ export function Testimonial() {
     <div className="space-y-6">
       <hr className="border-[#4D4B4A]" />
       <div className="space-y-4">
-        <blockquote className="text-[#2C2B2A] italic text-base leading-6">
-          "No wasted time, my Fully Autonomous AI agent does all the heavy lifting for me."
+        <blockquote className="text-[#2C2B2A] italic text-sm leading-6">
+          &quot;No wasted time, my Fully Autonomous AI agent does the heavy lifting so I can focus on decisions.&quot;
         </blockquote>
         <div className="flex space-x-1">
           {[...Array(5)].map((_, i) => (

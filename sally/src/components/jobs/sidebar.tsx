@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Home,
   Search,
@@ -15,15 +16,19 @@ import {
   Briefcase
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useJobsContext } from '@/contexts/JobsContext';
 
 interface SidebarNavItemProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   isActive?: boolean;
+  href?: string;
+  onClick?: () => void;
 }
 
 export function JobsSidebar() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { jobs, loading: jobsLoading, error: jobsError } = useJobsContext();
 
   // Debug logging
   console.log('JobsSidebar - Auth State:', { user, isAuthenticated, isLoading });
@@ -69,31 +74,29 @@ export function JobsSidebar() {
 
           {/* Job Role Subsections */}
           <div className="ml-6 space-y-1 mt-2">
-            <SidebarNavItem
-              icon={Users}
-              label="Frontend Developer"
-              isActive={false}
-            />
-            <SidebarNavItem
-              icon={Users}
-              label="Backend Engineer"
-              isActive={false}
-            />
-            <SidebarNavItem
-              icon={Users}
-              label="Product Manager"
-              isActive={false}
-            />
-            <SidebarNavItem
-              icon={Users}
-              label="UX Designer"
-              isActive={false}
-            />
-            <SidebarNavItem
-              icon={Users}
-              label="Data Scientist"
-              isActive={false}
-            />
+            {jobsLoading ? (
+              <div className="text-sm text-gray-500 px-3 py-2">
+                Loading jobs...
+              </div>
+            ) : jobsError ? (
+              <div className="text-sm text-red-500 px-3 py-2">
+                Error loading jobs
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="text-sm text-gray-500 px-3 py-2">
+                No jobs found
+              </div>
+            ) : (
+              jobs.map((job) => (
+                <SidebarNavItem
+                  key={job.id}
+                  icon={Users}
+                  label={job.sections?.basic_information?.title || 'Untitled Job'}
+                  isActive={false}
+                  href={`/job-dashboard/${job.id}`}
+                />
+              ))
+            )}
           </div>
         </div>
 
@@ -146,11 +149,6 @@ export function JobsSidebar() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-sm font-medium text-[#1D2025] truncate">{user.full_name}</p>
-                {user.is_admin && (
-                  <span className="px-1.5 py-0.5 bg-gradient-to-r from-[#8952E0] to-[#7A47CC] text-white text-xs font-medium rounded-full flex-shrink-0">
-                    Admin
-                  </span>
-                )}
               </div>
               <p className="text-xs text-[#6B7280] truncate">{user.email}</p>
             </div>
@@ -161,18 +159,32 @@ export function JobsSidebar() {
   );
 }
 
-function SidebarNavItem({ icon: Icon, label, isActive = false }: SidebarNavItemProps) {
-  return (
-    <div 
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-        isActive 
-          ? 'bg-gradient-to-r from-[#8952E0] to-[#7A47CC] text-white shadow-sm' 
-          : 'text-[#6B7280] hover:bg-gray-50 hover:text-[#1D2025]'
-      }`}
-    >
+function SidebarNavItem({ icon: Icon, label, isActive = false, href, onClick }: SidebarNavItemProps) {
+  const content = (
+    <>
       <Icon className="w-5 h-5" />
       <span className="text-sm font-medium">{label}</span>
       {isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
+    </>
+  );
+
+  const className = `flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+    isActive
+      ? 'bg-gradient-to-r from-[#8952E0] to-[#7A47CC] text-white shadow-sm'
+      : 'text-[#6B7280] hover:bg-gray-50 hover:text-[#1D2025]'
+  }`;
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={className} onClick={onClick}>
+      {content}
     </div>
   );
 }

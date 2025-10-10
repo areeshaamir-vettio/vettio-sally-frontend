@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Check, Clock, Circle } from 'lucide-react';
+// import { Check, Clock, Circle } from 'lucide-react';
 import { RoadmapStep } from '@/types/conversational-ai';
 import { mapRoleToRoadmap } from '@/lib/mappers/role-enhancement-mapper';
 import { RoleData } from '@/types/role-enhancement';
@@ -23,16 +23,8 @@ export function Roadmap({ roadmapId, roleData, isLoading = false }: RoadmapProps
   const error = !roleData && !isLoading ? 'No role data available' : null;
 
   const getStatusIcon = (status: RoadmapStep['status'], stepNumber: number) => {
-    switch (status) {
-      case 'completed':
-        return <Check className="w-4 h-4 text-white" />;
-      case 'in-progress':
-        return <Clock className="w-4 h-4 text-white" />;
-      case 'pending':
-        return <Circle className="w-4 h-4 text-[#9CA3AF]" />;
-      default:
-        return <span className="text-xs font-medium text-[#9CA3AF]">{stepNumber}</span>;
-    }
+    // Always show step number instead of icons
+    return <span className="text-sm font-normal text-white leading-5">{stepNumber}</span>;
   };
 
   const getStatusText = (status: RoadmapStep['status']) => {
@@ -83,19 +75,16 @@ export function Roadmap({ roadmapId, roleData, isLoading = false }: RoadmapProps
     );
   }
 
+  const completedCount = roadmap.steps.filter(s => s.status === 'completed').length;
+  const pendingCount = roadmap.steps.length - completedCount;
+
   return (
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-[#1D2025] mb-4">
+        <h2 className="text-sm font-normal text-[#0E1012] leading-5 mb-4">
           {roadmap.title}
         </h2>
-        <div className="flex items-center justify-between text-xs mb-3">
-          <span className="text-[#6B7280]">
-            {roadmap.steps.filter(s => s.status === 'completed').length} of {roadmap.steps.length} completed
-          </span>
-          <span className="text-[#6B7280]">{roadmap.overallProgress}%</span>
-        </div>
       </div>
 
       {/* Vertical Progress Line */}
@@ -118,12 +107,10 @@ export function Roadmap({ roadmapId, roleData, isLoading = false }: RoadmapProps
               <div key={step.id} className="relative flex items-start">
                 {/* Step Circle */}
                 <div
-                  className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                    step.status === 'completed'
-                      ? 'bg-[#8952E0] border-[#8952E0] text-white shadow-lg'
-                      : step.status === 'in-progress'
-                      ? 'bg-white border-[#8952E0] text-[#8952E0] shadow-md'
-                      : 'bg-white border-[#E5E7EB] text-[#9CA3AF]'
+                  className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    step.status === 'completed' || step.status === 'in-progress'
+                      ? 'bg-[#8952E0]'
+                      : 'bg-[#E5E7EB]'
                   }`}
                 >
                   {getStatusIcon(step.status, step.stepNumber)}
@@ -132,24 +119,15 @@ export function Roadmap({ roadmapId, roleData, isLoading = false }: RoadmapProps
                 {/* Step Content */}
                 <div className="ml-4 flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-sm font-medium text-[#1D2025]">
+                    <h3 className={`text-sm font-medium leading-6 ${
+                      step.status === 'in-progress' ? 'text-[#1D2025]' : 'text-[#52555A]'
+                    }`}>
                       {step.title}
                     </h3>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      step.status === 'completed'
-                        ? 'bg-[#8952E0]/10 text-[#8952E0]'
-                        : step.status === 'in-progress'
-                        ? 'bg-[#F59E0B]/10 text-[#F59E0B]'
-                        : 'bg-[#6B7280]/10 text-[#6B7280]'
-                    }`}>
-                      {getStatusText(step.status)}
-                    </span>
                   </div>
-                  {step.description && (
-                    <p className="text-xs text-[#6B7280] leading-relaxed">
-                      {step.description}
-                    </p>
-                  )}
+                  <p className="text-xs font-normal text-[#52555A] leading-4">
+                    {getStatusText(step.status)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -157,17 +135,19 @@ export function Roadmap({ roadmapId, roleData, isLoading = false }: RoadmapProps
         </div>
       </div>
 
-      {/* Current Step Details */}
-      {roadmap.steps.find(s => s.status === 'in-progress') && (
-        <div className="bg-[#F8F9FA] rounded-lg p-4">
-          <h3 className="text-sm font-medium text-[#1D2025] mb-2">
-            Current Step: {roadmap.steps.find(s => s.status === 'in-progress')?.title}
-          </h3>
-          <p className="text-xs text-[#6B7280] leading-relaxed">
-            {roadmap.steps.find(s => s.status === 'in-progress')?.description}
-          </p>
+      {/* Progress Summary */}
+      <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
+        <div className="flex items-center justify-between text-sm font-normal leading-5">
+          <div className="flex items-center space-x-2">
+            <span className="text-black">Completed</span>
+            <span className="text-[#0E1012]">{completedCount}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-black">Pending</span>
+            <span className="text-[#0E1012]">{pendingCount}</span>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

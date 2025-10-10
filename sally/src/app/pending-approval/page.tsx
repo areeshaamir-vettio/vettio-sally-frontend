@@ -12,7 +12,7 @@ export default function PendingApprovalPage() {
 
   const handleLogout = () => {
     AuthService.logout();
-    router.push('/landing-page');
+    router.push('/');
   };
 
   const handleRefresh = () => {

@@ -33,17 +33,21 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsReturn {
     try {
       setLoading(true);
       setError(null);
-      
+
       const queryOptions = {
+        limit: 50, // Default to fetch up to 50 jobs
+        clear_cache: true, 
         ...fetchOptions,
         ...customOptions,
       };
-      
+
+      console.log('🔍 Fetching jobs with options:', queryOptions);
       const jobsData = await jobsService.listJobs(queryOptions);
       setJobs(jobsData);
       setHasJobs(jobsData.length > 0);
-      
+
       console.log('✅ Jobs fetched successfully:', jobsData.length, 'jobs');
+      console.log('📋 Job titles:', jobsData.map(job => job.sections?.basic_information?.title || 'Untitled').slice(0, 10));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs';
       setError(errorMessage);
@@ -52,7 +56,7 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsReturn {
     } finally {
       setLoading(false);
     }
-  }, [fetchOptions]);
+  }, []); // Remove fetchOptions dependency to prevent infinite loops
 
   const checkHasJobs = useCallback(async (): Promise<boolean> => {
     try {
@@ -82,9 +86,9 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsReturn {
   // Auto-fetch jobs on mount if enabled
   useEffect(() => {
     if (autoFetch) {
-      fetchJobs();
+      fetchJobs(fetchOptions);
     }
-  }, [autoFetch, fetchJobs]);
+  }, [autoFetch]); // Only depend on autoFetch to prevent infinite loops
 
   return {
     jobs,
@@ -130,7 +134,7 @@ export function useHasJobs() {
   // Auto-check on mount
   useEffect(() => {
     checkHasJobs();
-  }, [checkHasJobs]);
+  }, []); // Empty dependency array to only run on mount
 
   return {
     hasJobs,

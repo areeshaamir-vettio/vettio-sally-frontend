@@ -33,7 +33,7 @@ export class OAuthService {
    */
   static async initiateOAuth(provider: 'google' | 'linkedin' | 'github'): Promise<void> {
     try {
-      const redirectUri = process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI || 'http://localhost:3000/oauth2callback';
+      const redirectUri = 'http://localhost:3000/oauth2callback';
 
       console.log(`🔄 Initiating ${provider} OAuth with redirect URI:`, redirectUri);
 
@@ -88,7 +88,7 @@ export class OAuthService {
         throw new Error('OAuth provider not found');
       }
 
-      const redirectUri = process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI || 'http://localhost:3000/oauth2callback';
+      const redirectUri = 'http://localhost:3000/oauth2callback';
       
       const callbackData: OAuthCallbackRequest = {
         provider: oauthProvider,

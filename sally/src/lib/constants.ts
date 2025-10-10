@@ -51,11 +51,11 @@ export const API_ENDPOINTS = {
   
   // Jobs (placeholder for future implementation)
   JOBS: {
-    LIST: '/jobs',
-    CREATE: '/jobs',
-    GET: (id: string) => `/jobs/${id}`,
-    UPDATE: (id: string) => `/jobs/${id}`,
-    DELETE: (id: string) => `/jobs/${id}`,
+    LIST: '/dashboard',
+    CREATE: '/dashboard',
+    GET: (id: string) => `/dashboard/${id}`,
+    UPDATE: (id: string) => `/dashboard/${id}`,
+    DELETE: (id: string) => `/dashboard/${id}`,
   },
   
   // Candidates (placeholder for future implementation)

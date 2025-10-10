@@ -52,20 +52,27 @@ export function useRole(): UseRoleReturn {
   useEffect(() => {
     const loadRole = async () => {
       const roleId = getRoleId();
-      if (!roleId) return;
+      if (!roleId) {
+        console.log('ℹ️ No role ID in storage, skipping auto-load');
+        return;
+      }
 
       try {
         setLoading(true);
         setError(null);
-        
+
+        console.log('🔄 Loading role from storage:', roleId);
         const fetchedRole = await apiClient.getRole(roleId);
         setRole(fetchedRole);
         console.log('📥 Loaded role from storage:', fetchedRole);
       } catch (err) {
-        console.error('❌ Failed to load role:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load role');
-        // Clear invalid role ID
-        clearRole();
+        console.warn('⚠️ Failed to load role from storage (may be invalid/deleted):', err);
+        // Don't set error state for auto-load failures - they're not critical
+        // Just clear the invalid role ID silently
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('current_role_id');
+          console.log('🗑️ Cleared invalid role ID from storage');
+        }
       } finally {
         setLoading(false);
       }

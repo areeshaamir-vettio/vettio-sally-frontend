@@ -14,6 +14,7 @@ export interface Role {
   created_at: string;
   updated_at: string;
   created_by?: string;
+  is_complete?: boolean; // Whether the role intake is complete
 
   // Additional fields that might be returned
   department?: string;

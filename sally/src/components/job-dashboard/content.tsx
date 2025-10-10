@@ -6,8 +6,16 @@ import { JobDashboardBreadcrumb } from './breadcrumb';
 import { CandidateTabs } from './candidate-tabs';
 import { CandidateThreeColumnLayout } from './candidate-three-column-layout';
 import { Button } from '@/components/ui/button';
+import { Job } from '@/services/jobs.service';
 
-export function JobDashboardContent() {
+interface JobDashboardContentProps {
+  job?: Job;
+}
+
+export function JobDashboardContent({ job }: JobDashboardContentProps) {
+  // Get job title from the job data or fallback
+  const jobTitle = job?.sections?.basic_information?.title || 'Job Role';
+  const jobLocation = job?.sections?.basic_information?.location_text || 'Location TBD';
   return (
     <div className="flex-1 flex flex-col bg-[#F9FAFA] overflow-hidden">
       {/* Top Navbar */}
@@ -37,11 +45,21 @@ export function JobDashboardContent() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-[#1D2025] mb-2">
-                  Frontend Developer Role
+                  {jobTitle}
                 </h1>
                 <p className="text-[#6B7280]">
-                  Manage and track applications for this job role
+                  Manage and track applications for this job role • {jobLocation}
                 </p>
+                {job && (
+                  <div className="flex items-center gap-4 mt-2">
+                    <span className="text-sm text-[#6B7280]">
+                      Job ID: {job.id}
+                    </span>
+                    <span className="text-sm text-[#6B7280]">
+                      Status: <span className="capitalize">{job.status}</span>
+                    </span>
+                  </div>
+                )}
               </div>
               <Button className="flex items-center gap-2 shadow-sm">
                 <Plus className="w-4 h-4" />

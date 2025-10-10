@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { FileUpload } from './file-upload';
 import { mockJobDescriptionApi } from '@/lib/mock-job-api';
 import { apiClient } from '@/lib/api-client';
-import { roleUtils } from '@/hooks/useRole';
 
 export function JobDescriptionActions() {
   const router = useRouter();
@@ -26,17 +25,10 @@ export function JobDescriptionActions() {
         location_text: result.location,
       });
 
-      // Save role ID to session storage
-      // TODO: When job list is implemented:
-      // 1. Add this role to the user's job list
-      // 2. Consider using localStorage for persistence across sessions
-      // 3. Add role metadata (created_at, last_accessed, status)
-      // 4. Implement role management (edit, delete, duplicate)
-      roleUtils.setCurrentRoleId(newRole.id);
-      console.log('✅ Role created and saved to session storage:', newRole.id);
+      console.log('✅ Role created:', newRole.id);
 
-      // Navigate to conversational AI (step 5 in the flow)
-      router.push('/conversational-ai');
+      // Navigate to conversational AI with role ID in URL
+      router.push(`/conversational-ai?roleId=${newRole.id}`);
     } catch (error) {
       console.error('Upload failed:', error);
       // Handle error (show toast, etc.)
@@ -65,17 +57,10 @@ export function JobDescriptionActions() {
         // title: result.jobTitle,
       });
 
-      // Save role ID to session storage
-      // TODO: When job list is implemented:
-      // 1. Add this role to the user's job list
-      // 2. Consider using localStorage for persistence across sessions
-      // 3. Add role metadata (created_at, last_accessed, status)
-      // 4. Implement role management (edit, delete, duplicate)
-      roleUtils.setCurrentRoleId(newRole.id);
-      console.log('✅ Role created and saved to session storage:', newRole.id);
+      console.log('✅ Role created:', newRole.id);
 
-      // Navigate to conversational AI (step 5 in the flow)
-      router.push('/conversational-ai');
+      // Navigate to conversational AI with role ID in URL
+      router.push(`/conversational-ai?roleId=${newRole.id}`);
     } catch (error) {
       console.error('Build failed:', error);
       // Handle error (show toast, etc.)

@@ -23,7 +23,8 @@ export function VoiceAgentWidget({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const interimTranscriptRef = useRef('');
   const finalTranscriptRef = useRef('');
-  const sendTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Renamed for clarity
+  const isActiveRef = useRef(false); // Track active state in ref to avoid dependency issues
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -46,6 +47,7 @@ export function VoiceAgentWidget({
     recognition.onstart = () => {
       setIsProcessing(false);
       setError(null);
+      console.log('✅ Speech recognition started successfully');
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -61,78 +63,100 @@ export function VoiceAgentWidget({
         }
       }
 
-      // Show interim results in real-time
-      interimTranscriptRef.current = interimTranscript;
-      setTranscript(interimTranscript || finalTranscriptRef.current);
+      // Log any speech detected
+      if (interimTranscript || finalTranscript) {
+        console.log('🎙️ Speech detected - Interim:', interimTranscript, 'Final:', finalTranscript);
+      }
 
-      // If we have a final transcript, replace (not accumulate) the previous one
+      // If we have a final transcript, accumulate it
       if (finalTranscript.trim()) {
-        // Replace with the latest final transcript (not accumulate)
-        finalTranscriptRef.current = finalTranscript.trim();
-        setTranscript(finalTranscriptRef.current);
+        // Accumulate final transcripts (don't replace)
+        finalTranscriptRef.current += finalTranscript;
+        console.log('🎤 Accumulated transcript:', finalTranscriptRef.current);
 
-        // Clear any existing timeout
-        if (sendTimeoutRef.current) {
-          clearTimeout(sendTimeoutRef.current);
+        // Clear existing silence timeout
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
         }
 
-        // Set a new timeout to send after 1 second of silence
-        sendTimeoutRef.current = setTimeout(() => {
+        // Auto-send after 2 seconds of silence
+        silenceTimeoutRef.current = setTimeout(() => {
           const textToSend = finalTranscriptRef.current.trim();
 
           if (textToSend) {
-            setIsProcessing(true);
-            console.log('🎤 Sending last voice input after 1s delay:', textToSend);
+            console.log('🎤 Sending voice input after 2s silence:', textToSend);
             onVoiceInput?.(textToSend);
 
-            // Clear the transcript
+            // Clear transcript after sending
             finalTranscriptRef.current = '';
             setTranscript('');
-            interimTranscriptRef.current = '';
-
-            // Reset processing state after a delay
-            setTimeout(() => setIsProcessing(false), 1000);
           }
-        }, 1000); // 1 second delay after user stops speaking
+        }, 2000);
       }
+
+      // Show combined final + interim results in real-time
+      const displayText = finalTranscriptRef.current + interimTranscript;
+      setTranscript(displayText);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error);
+      console.error('❌ Speech recognition error:', event.error);
+
       if (event.error === 'no-speech') {
         // Don't show error for no-speech, just continue listening
+        console.log('ℹ️ No speech detected, continuing to listen...');
         return;
       }
+
+      if (event.error === 'aborted') {
+        // Recognition was aborted (e.g., user stopped it)
+        console.log('ℹ️ Speech recognition aborted');
+        return;
+      }
+
+      if (event.error === 'not-allowed') {
+        setError('Microphone permission denied. Please allow microphone access.');
+        setIsActive(false);
+        isActiveRef.current = false;
+        onListeningChange?.(false);
+        return;
+      }
+
       setError(`Error: ${event.error}`);
       setIsActive(false);
+      isActiveRef.current = false;
       onListeningChange?.(false);
     };
 
     recognition.onend = () => {
       // If still active, restart recognition
-      if (isActive && !disabled) {
+      // Use ref to avoid stale closure
+      if (isActiveRef.current && !disabled) {
         try {
+          console.log('🔄 Recognition ended, restarting...');
           recognition.start();
         } catch (err) {
           console.error('Failed to restart recognition:', err);
         }
+      } else {
+        console.log('🛑 Recognition ended, not restarting (isActive:', isActiveRef.current, ')');
       }
     };
 
     recognitionRef.current = recognition;
 
     return () => {
-      // Clear any pending send timeout
-      if (sendTimeoutRef.current) {
-        clearTimeout(sendTimeoutRef.current);
-        sendTimeoutRef.current = null;
+      // Clear any pending silence timeout
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
       }
 
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
     };
-  }, [isActive, disabled, onVoiceInput, onListeningChange]);
+  }, [disabled, onVoiceInput, onListeningChange]); // Removed isActive from dependencies
 
   const handleToggleVoice = useCallback(() => {
     if (disabled) return;
@@ -143,26 +167,57 @@ export function VoiceAgentWidget({
     }
 
     const newActiveState = !isActive;
-    setIsActive(newActiveState);
-    onListeningChange?.(newActiveState);
 
     if (newActiveState) {
+      // Starting voice input
+      // IMPORTANT: Notify parent FIRST to stop AI speech immediately
+      onListeningChange?.(true);
+
+      // Then update state and ref, clear transcripts
+      setIsActive(true);
+      isActiveRef.current = true; // Sync ref
+      finalTranscriptRef.current = '';
+      interimTranscriptRef.current = '';
+      setTranscript('');
+
       try {
         recognitionRef.current.start();
         setError(null);
+        console.log('🎤 Voice input started - AI speech stopped');
       } catch (err) {
         console.error('Failed to start recognition:', err);
         setError('Failed to start voice recognition');
         setIsActive(false);
+        isActiveRef.current = false; // Sync ref
         onListeningChange?.(false);
       }
     } else {
+      // Stopping voice input
+      // Notify parent first
+      onListeningChange?.(false);
+
+      // Stop recognition
+      setIsActive(false);
+      isActiveRef.current = false; // Sync ref
       recognitionRef.current.stop();
 
-      // Clear any pending send timeout when stopping
-      if (sendTimeoutRef.current) {
-        clearTimeout(sendTimeoutRef.current);
-        sendTimeoutRef.current = null;
+      // Clear any pending silence timeout when stopping
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
+
+      // Send the accumulated transcript if we have any
+      const textToSend = finalTranscriptRef.current.trim();
+      if (textToSend) {
+        setIsProcessing(true);
+        console.log('🎤 Sending accumulated voice input on mic stop:', textToSend);
+        onVoiceInput?.(textToSend);
+
+        // Reset processing state after a delay
+        setTimeout(() => setIsProcessing(false), 1000);
+      } else {
+        console.log('🎤 Voice input stopped - no text captured');
       }
 
       // Clear all transcripts
@@ -170,7 +225,7 @@ export function VoiceAgentWidget({
       interimTranscriptRef.current = '';
       finalTranscriptRef.current = '';
     }
-  }, [isActive, disabled, onListeningChange]);
+  }, [isActive, disabled, onListeningChange, onVoiceInput]);
 
   return (
     <div className="flex flex-col items-center justify-center p-8">
@@ -231,13 +286,9 @@ export function VoiceAgentWidget({
           ) : isActive ? (
             'Speak naturally about your job requirements'
           ) : (
-            'Or type your message below'
+            '' // Removed "Or type your message below" text
           )}
         </p>
-        {/* English Only Indicator */}
-        <div className="mt-2 inline-flex items-center px-3 py-1 bg-blue-50 border border-blue-200 rounded-full">
-          <span className="text-xs font-medium text-blue-700">🇺🇸 English Only</span>
-        </div>
       </div>
 
       {/* Live Transcript Display */}
