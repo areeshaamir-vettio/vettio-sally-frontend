@@ -1,0 +1,6 @@
+# Ignore all JSON design files
+*.json
+
+# Keep the README
+!README.md
+
