@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   User,
   Star,
-  ExternalLink,
   AlertCircle
 } from 'lucide-react';
 import { useRoleCandidates } from '@/hooks/useRoleCandidates';
@@ -12,9 +12,10 @@ import { Candidate } from '@/types/candidates';
 
 interface CandidateThreeColumnLayoutProps {
   roleId?: string;
+  onCandidateSelect?: (candidate: Candidate) => void;
 }
 
-export function CandidateThreeColumnLayout({ roleId }: CandidateThreeColumnLayoutProps) {
+export function CandidateThreeColumnLayout({ roleId, onCandidateSelect }: CandidateThreeColumnLayoutProps) {
   console.log('🎯 CandidateThreeColumnLayout: Component rendered with roleId:', roleId);
 
   // Use a stable options object to prevent infinite re-renders
@@ -140,6 +141,8 @@ export function CandidateThreeColumnLayout({ roleId }: CandidateThreeColumnLayou
                 <CandidateCard
                   key={candidate.id}
                   candidate={candidate}
+                  roleId={roleId}
+                  onCandidateSelect={onCandidateSelect}
                 />
               );
             }).filter(Boolean) // Remove null entries
@@ -173,6 +176,8 @@ export function CandidateThreeColumnLayout({ roleId }: CandidateThreeColumnLayou
                 <CandidateCard
                   key={`new-${candidate.id}`}
                   candidate={candidate}
+                  roleId={roleId}
+                  onCandidateSelect={onCandidateSelect}
                 />
               );
             }).filter(Boolean)
@@ -206,6 +211,8 @@ export function CandidateThreeColumnLayout({ roleId }: CandidateThreeColumnLayou
                 <CandidateCard
                   key={`shortlisted-${candidate.id}`}
                   candidate={candidate}
+                  roleId={roleId}
+                  onCandidateSelect={onCandidateSelect}
                 />
               );
             }).filter(Boolean)
@@ -218,7 +225,15 @@ export function CandidateThreeColumnLayout({ roleId }: CandidateThreeColumnLayou
 
 
 
-function CandidateCard({ candidate }: { candidate: Candidate }) {
+interface CandidateCardProps {
+  candidate: Candidate;
+  roleId?: string;
+  onCandidateSelect?: (candidate: Candidate) => void;
+}
+
+function CandidateCard({ candidate, roleId, onCandidateSelect }: CandidateCardProps) {
+  const router = useRouter();
+
   // Generate fake match score (70-95% range)
   const generateMatchScore = (candidateId: string) => {
     // Use candidate ID to generate consistent score
@@ -237,15 +252,26 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
   const candidateTitle = candidate.professional_info?.current_title?.trim() ||
                         'No title available';
 
-  const candidateEmail = candidate.contact_info?.email?.trim() || null;
   const candidateLinkedIn = candidate.contact_info?.linkedin_url?.trim() ||
                            candidate.linkedin_url?.trim() || null;
 
   // Generate match score
   const matchScore = generateMatchScore(candidate.id);
 
+  const handleCardClick = () => {
+    if (onCandidateSelect) {
+      onCandidateSelect(candidate);
+    } else if (roleId) {
+      // Fallback to navigation if no callback provided
+      router.push(`/job-dashboard/${roleId}/candidate/${candidate.id}`);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden">
+    <div
+      className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer"
+      onClick={handleCardClick}
+    >
       {/* Card Content with proper padding matching Figma */}
       <div className="px-5 pt-4 pb-5">
 
@@ -283,9 +309,11 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
         {/* Contact Information Section */}
         <div className="mb-5">
           <p className="text-md text-[#6B7280] mb-1">{candidateTitle}</p>
-          
-          <p className="text-md text-[#6B7280]">emailplaceholder@gmail.com</p>
-        
+
+          <p className="text-md text-[#6B7280]">
+            {candidate.contact_info?.email || 'No email available'}
+          </p>
+
         </div>
 
         {/* Match Score Tag - Full Width */}

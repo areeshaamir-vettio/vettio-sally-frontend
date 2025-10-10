@@ -63,6 +63,16 @@ export interface CandidateAuditInfo {
   version: number;
 }
 
+export interface CandidateEducation {
+  degree: string;
+  institution: string;
+  location?: string;
+  duration: string;
+  gpa?: string;
+  honors?: string;
+  field_of_study?: string;
+}
+
 export interface Candidate {
   id: string;
   organization_id: string;
@@ -82,7 +92,7 @@ export interface Candidate {
   // Additional fields from API
   address?: any;
   work_experience?: any;
-  education?: any;
+  education?: CandidateEducation[] | any;
   certifications?: any;
   languages?: any;
   consent_records?: any;
@@ -102,6 +112,7 @@ export interface Candidate {
   response_rate?: number;
   timezone?: any;
   last_activity?: any;
+  skillsList?: string[]; // For simple string array of skills
 }
 
 export interface RoleCandidatesMetadata {

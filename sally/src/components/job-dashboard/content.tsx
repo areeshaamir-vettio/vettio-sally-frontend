@@ -1,15 +1,17 @@
 'use client';
 
-import React from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Bell, Search, Filter, Plus } from 'lucide-react';
 import { JobDashboardBreadcrumb } from './breadcrumb';
 import { CandidateTabs } from './candidate-tabs';
 import { CandidateThreeColumnLayout } from './candidate-three-column-layout';
+import { CandidateDetailPanel } from './candidate-detail-panel';
 import { Button } from '@/components/ui/button';
 import { Job } from '@/services/jobs.service';
 import { useRoleCandidates } from '@/hooks/useRoleCandidates';
+import { Candidate } from '@/types/candidates';
 
 interface JobDashboardContentProps {
   job?: Job;
@@ -17,7 +19,12 @@ interface JobDashboardContentProps {
 
 export function JobDashboardContent({ job }: JobDashboardContentProps) {
   const params = useParams();
+  const searchParams = useSearchParams();
   const urlJobId = params.jobId as string;
+
+  // State for candidate detail panel
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   console.log('🏢 JobDashboardContent: Component rendered with job:', job);
   console.log('🏢 JobDashboardContent: Job ID from prop:', job?.id);
@@ -30,6 +37,58 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
   // Use a stable options object to prevent infinite re-renders
   const candidatesOptions = React.useMemo(() => ({ limit: 100 }), []);
   const { candidates, totalCount } = useRoleCandidates(effectiveJobId, candidatesOptions);
+
+  // Handle candidate selection
+  const handleCandidateSelect = (candidate: Candidate) => {
+    // Enhance candidate with mock data for detail view
+    const enhancedCandidate = enhanceCandidateWithMockData(candidate);
+    setSelectedCandidate(enhancedCandidate);
+    setIsPanelOpen(true);
+  };
+
+  // Handle panel close
+  const handlePanelClose = () => {
+    setIsPanelOpen(false);
+    setSelectedCandidate(null);
+  };
+
+  // Function to enhance candidate with mock data
+  const enhanceCandidateWithMockData = (candidate: Candidate): Candidate => {
+    return {
+      ...candidate,
+      education: candidate.education || [
+        {
+          degree: 'Masters of Science in Computer Sciences',
+          institution: 'Columbia University',
+          location: 'New York, NY',
+          duration: '2020 - 2022'
+        },
+        {
+          degree: 'Bachelor of Science in Computer Science',
+          institution: 'University of California, Berkeley',
+          location: 'Berkeley, CA',
+          duration: '2016 - 2020'
+        }
+      ],
+      work_experience: candidate.work_experience || [
+        {
+          title: candidate.professional_info?.current_title || 'Senior Frontend Developer',
+          company: candidate.professional_info?.current_company || 'Tech Solutions Inc.',
+          location: 'San Francisco, CA',
+          duration: '2022 - Present',
+          description: 'Lead frontend development for enterprise SaaS platform using React, TypeScript, and Next.js.'
+        },
+        {
+          title: 'Frontend Developer',
+          company: 'StartupXYZ',
+          location: 'Remote',
+          duration: '2020 - 2022',
+          description: 'Built responsive web applications and implemented modern UI/UX designs.'
+        }
+      ],
+      skillsList: candidate.skillsList || ['React', 'TypeScript', 'Next.js', 'TailwindCSS', 'Node.js', 'GraphQL', 'AWS', 'Docker']
+    };
+  };
 
   console.log('📈 JobDashboardContent: Candidates data:', {
     jobId: job?.id,
@@ -47,7 +106,7 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
   const jobTitle = job?.sections?.basic_information?.title || 'Job Role';
   const jobLocation = job?.sections?.basic_information?.location_text || 'Location TBD';
   return (
-    <div className="flex-1 flex flex-col bg-[#F9FAFA] overflow-hidden">
+    <div className={`flex-1 flex flex-col bg-[#F9FAFA] overflow-hidden transition-all duration-300 ${isPanelOpen ? 'mr-[373px]' : ''}`}>
       {/* Top Navbar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
         <div className="flex items-center justify-between">
@@ -82,7 +141,13 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
                 </p>
                
               </div>
+              
+              
              
+            </div>
+              <div className="space-y-4">
+           
+            
             </div>
 
             {/* Stats Section */}
@@ -114,6 +179,19 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
             </div>
           </div>
 
+
+          <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-[#1D2025] mb-2 mt-4">
+                  Candidates Ready For Review
+                </h1>
+                <p className="text-[#6B7280] mb-4">
+                 These candidates have both shown interest and passed our initial evaluation. They align with your requirements and are now ready for your review. Once you’re ready, you can take the next step.
+                </p>
+              
+              </div>
+                        
+            </div>
           {/* Controls Section */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
@@ -140,7 +218,10 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
             </div>
 
             {/* Main Content Layout */}
-            <CandidateThreeColumnLayout roleId={effectiveJobId} />
+            <CandidateThreeColumnLayout
+              roleId={effectiveJobId}
+              onCandidateSelect={handleCandidateSelect}
+            />
 
             {/* Debug Info */}
             {/* {process.env.NODE_ENV === 'development' && (
@@ -157,6 +238,17 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
           </div>
         </div>
       </div>
+
+      {/* Candidate Detail Panel - Fixed Position */}
+      {isPanelOpen && selectedCandidate && job && (
+        <div className="fixed top-0 right-0 h-full z-50">
+          <CandidateDetailPanel
+            job={job}
+            candidate={selectedCandidate}
+            onClose={handlePanelClose}
+          />
+        </div>
+      )}
     </div>
   );
 }
