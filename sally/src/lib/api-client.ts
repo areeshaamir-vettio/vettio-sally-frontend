@@ -71,17 +71,41 @@ class ApiClient {
 
           try {
             const refreshToken = TokenManager.getRefreshToken();
-            if (refreshToken) {
-              // Use AuthService.refreshToken which handles the correct API call
-              const newAccessToken = await AuthService.refreshToken();
-
-              // Retry original request with new token
-              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-              return this.axiosInstance(originalRequest);
+            if (!refreshToken) {
+              console.error('❌ API Interceptor: No refresh token available');
+              AuthService.performFullLogout();
+              return Promise.reject(new Error('No refresh token available'));
             }
-          } catch (refreshError) {
-            // Refresh failed, logout user
-            AuthUtils.logout();
+
+            // Check if refresh token is expired
+            if (TokenManager.isTokenExpired(refreshToken)) {
+              console.error('❌ API Interceptor: Refresh token has expired');
+              AuthService.performFullLogout();
+              return Promise.reject(new Error('Refresh token expired'));
+            }
+
+            // Use AuthService.refreshToken which handles the correct API call
+            const newAccessToken = await AuthService.refreshToken();
+
+            // Retry original request with new token
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            return this.axiosInstance(originalRequest);
+          } catch (refreshError: any) {
+            // Refresh failed, perform full logout
+            console.error('❌ API Interceptor: Token refresh failed, logging out');
+
+            // Check if it's an auth error (tokens expired) vs network error
+            const isAuthError = refreshError?.message?.includes('Refresh token expired') ||
+                               refreshError?.message?.includes('No refresh token available') ||
+                               refreshError?.message?.includes('Token refresh failed');
+
+            if (isAuthError) {
+              // Don't call performFullLogout again if it was already called in refreshToken
+              if (!refreshError?.message?.includes('Refresh token expired')) {
+                AuthService.performFullLogout();
+              }
+            }
+
             return Promise.reject(refreshError);
           }
         }

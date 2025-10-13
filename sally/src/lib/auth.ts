@@ -49,8 +49,15 @@ export class AuthService {
     const refreshToken = Cookies.get(this.REFRESH_TOKEN_KEY);
     if (!refreshToken) {
       console.error('❌ No refresh token available');
-      // Don't logout immediately - let the user stay on the page
       throw new Error('No refresh token available');
+    }
+
+    // Check if refresh token is expired before attempting refresh
+    if (TokenManager.isTokenExpired(refreshToken)) {
+      console.error('❌ Refresh token has expired');
+      // Both tokens are expired, perform full logout
+      this.performFullLogout();
+      throw new Error('Refresh token expired');
     }
 
     console.log('🔄 Attempting to refresh token...');
@@ -77,8 +84,8 @@ export class AuthService {
         // Only logout if refresh token is invalid (401/403)
         // For other errors (500, network), keep the user logged in
         if (response.status === 401 || response.status === 403) {
-          console.error('❌ Refresh token is invalid, logging out...');
-          AuthService.logout();
+          console.error('❌ Refresh token is invalid or expired, logging out...');
+          this.performFullLogout();
         }
 
         throw new Error(errorData.message || 'Token refresh failed');
@@ -107,6 +114,30 @@ export class AuthService {
     } catch (error) {
       console.error('❌ Token refresh error:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Perform a full logout - clear tokens and redirect to login page
+   * This should be called when both access and refresh tokens are expired/invalid
+   */
+  static performFullLogout(): void {
+    console.log('🚪 Performing full logout - clearing tokens and redirecting to login');
+
+    // Clear tokens
+    this.logout();
+
+    // Redirect to login page if in browser
+    if (typeof window !== 'undefined') {
+      // Store the current path to redirect back after login (optional)
+      const currentPath = window.location.pathname;
+      const publicPaths = ['/login', '/signup', '/', '/pending-approval'];
+
+      if (!publicPaths.includes(currentPath)) {
+        sessionStorage.setItem('redirectAfterLogin', currentPath);
+      }
+
+      window.location.href = '/login';
     }
   }
 

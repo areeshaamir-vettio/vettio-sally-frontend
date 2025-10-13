@@ -1,13 +1,21 @@
 import { useEffect, useRef } from 'react';
-import { AuthService } from '@/lib/auth';
+import { AuthService, TokenManager } from '@/lib/auth';
 
 /**
  * Hook to automatically refresh authentication tokens before they expire
  * This prevents users from being logged out unexpectedly
+ *
+ * Features:
+ * - Proactively refreshes access token 1 minute before expiration
+ * - Checks refresh token validity before attempting refresh
+ * - Logs out user when both tokens are expired
+ * - Retries on temporary failures but gives up on permanent failures
  */
 export function useAuthRefresh() {
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isRefreshingRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const MAX_RETRY_ATTEMPTS = 3;
 
   useEffect(() => {
     const setupTokenRefresh = () => {
@@ -45,9 +53,9 @@ export function useAuthRefresh() {
 
         // Schedule refresh 1 minute before expiration
         const refreshTime = timeUntilExpiry - 60000; // 1 minute before expiry
-        
+
         console.log(`⏰ useAuthRefresh: Scheduling token refresh in ${Math.round(refreshTime / 1000)} seconds`);
-        
+
         refreshTimerRef.current = setTimeout(() => {
           refreshTokenNow();
         }, refreshTime);
@@ -67,20 +75,56 @@ export function useAuthRefresh() {
       console.log('🔄 useAuthRefresh: Refreshing token...');
 
       try {
-        const newToken = await AuthService.refreshToken();
+        // Check if refresh token exists and is valid before attempting refresh
+        const refreshToken = TokenManager.getRefreshToken();
+        if (!refreshToken) {
+          console.error('❌ useAuthRefresh: No refresh token available');
+          AuthService.performFullLogout();
+          return;
+        }
+
+        // Check if refresh token is expired
+        if (TokenManager.isTokenExpired(refreshToken)) {
+          console.error('❌ useAuthRefresh: Refresh token has expired');
+          AuthService.performFullLogout();
+          return;
+        }
+
+        await AuthService.refreshToken();
         console.log('✅ useAuthRefresh: Token refreshed successfully');
-        
+
+        // Reset retry count on success
+        retryCountRef.current = 0;
+
         // Schedule the next refresh
         setupTokenRefresh();
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ useAuthRefresh: Token refresh failed:', error);
-        
-        // If refresh fails, try again in 30 seconds
-        // This gives the backend time to recover if it's temporarily down
-        console.log('⏰ useAuthRefresh: Scheduling retry in 30 seconds');
-        refreshTimerRef.current = setTimeout(() => {
-          refreshTokenNow();
-        }, 30000);
+
+        // Check if the error is due to expired/invalid refresh token
+        const isAuthError = error?.message?.includes('Refresh token expired') ||
+                           error?.message?.includes('No refresh token available');
+
+        if (isAuthError) {
+          console.error('❌ useAuthRefresh: Authentication failed - both tokens expired');
+          // Don't retry, user will be logged out by AuthService.refreshToken()
+          return;
+        }
+
+        // For network/temporary errors, retry with exponential backoff
+        retryCountRef.current += 1;
+
+        if (retryCountRef.current <= MAX_RETRY_ATTEMPTS) {
+          const retryDelay = Math.min(30000 * retryCountRef.current, 120000); // Max 2 minutes
+          console.log(`⏰ useAuthRefresh: Scheduling retry ${retryCountRef.current}/${MAX_RETRY_ATTEMPTS} in ${retryDelay / 1000} seconds`);
+
+          refreshTimerRef.current = setTimeout(() => {
+            refreshTokenNow();
+          }, retryDelay);
+        } else {
+          console.error('❌ useAuthRefresh: Max retry attempts reached, logging out');
+          AuthService.performFullLogout();
+        }
       } finally {
         isRefreshingRef.current = false;
       }

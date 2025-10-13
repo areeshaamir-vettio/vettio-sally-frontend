@@ -175,10 +175,20 @@ class ConversationalAiApiClient {
 
       // If unauthorized, attempt a token refresh once and retry
       if (response.status === 401) {
-        console.log('🔄 Attempting token refresh...');
+        console.log('🔄 ConversationalAI: Attempting token refresh...');
         try {
+          // Check if refresh token exists and is valid
+          const { TokenManager } = await import('./auth');
+          const refreshToken = TokenManager.getRefreshToken();
+
+          if (!refreshToken || TokenManager.isTokenExpired(refreshToken)) {
+            console.error('❌ ConversationalAI: Refresh token missing or expired');
+            AuthService.performFullLogout();
+            throw new Error('Session expired');
+          }
+
           const newAccessToken = await AuthService.refreshToken();
-          console.log('✅ Token refreshed, retrying request...');
+          console.log('✅ ConversationalAI: Token refreshed, retrying request...');
           response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -187,13 +197,20 @@ class ConversationalAiApiClient {
             },
             body: data ? JSON.stringify(data) : undefined,
           });
-          console.log('📡 Retry Response:', {
+          console.log('📡 ConversationalAI: Retry Response:', {
             status: response.status,
             statusText: response.statusText,
             ok: response.ok
           });
-        } catch (e) {
-          console.error('❌ Token refresh failed:', e);
+        } catch (e: any) {
+          console.error('❌ ConversationalAI: Token refresh failed:', e);
+
+          // Only call performFullLogout if it wasn't already called
+          if (!e?.message?.includes('Session expired') &&
+              !e?.message?.includes('Refresh token expired')) {
+            AuthService.performFullLogout();
+          }
+
           // Refresh failed, propagate original error handling below
         }
       }
