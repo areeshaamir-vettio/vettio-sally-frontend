@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Home,
   Search,
@@ -12,9 +12,11 @@ import {
   MessageSquare,
   Settings,
   ChevronRight,
+  ChevronDown,
   User,
   Bell,
-  Briefcase
+  Briefcase,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobs } from '@/hooks/useJobs';

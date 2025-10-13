@@ -331,18 +331,18 @@ function CandidateCard({ candidate, roleId, onCandidateSelect }: CandidateCardPr
           </p>
 
           {/* Additional info - Location or Company */}
-          {candidateLocation && candidateLocation !== 'Location not specified' && (
+          {/* {candidateLocation && candidateLocation !== 'Location not specified' && (
             <p className="text-sm text-[#6B7280] mb-1">
               📍 {candidateLocation}
             </p>
-          )}
+          )} */}
 
           {/* Experience level */}
-          {candidateExperience && candidateExperience !== 'Experience level not specified' && (
+          {/* {candidateExperience && candidateExperience !== 'Experience level not specified' && (
             <p className="text-sm text-[#6B7280]">
               💼 {candidateExperience}
             </p>
-          )}
+          )} */}
         </div>
 
         {/* Match Score Tag - Full Width */}

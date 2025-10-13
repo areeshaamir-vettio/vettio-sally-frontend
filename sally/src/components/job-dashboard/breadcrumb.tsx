@@ -53,12 +53,25 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
   );
 }
 
-// Default breadcrumb for Job Dashboard
-export function JobDashboardBreadcrumb() {
+// Job Dashboard breadcrumb with dynamic job title
+interface JobDashboardBreadcrumbProps {
+  job?: {
+    id: string;
+    sections?: {
+      basic_information?: {
+        title?: string;
+      };
+    };
+  } | null;
+}
+
+export function JobDashboardBreadcrumb({ job }: JobDashboardBreadcrumbProps) {
+  // Extract job title from job data, same as used in sidebar and cards
+  const jobTitle = job?.sections?.basic_information?.title || 'Job Dashboard';
+
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Job Dashboard', href: '/job-dashboard' },
-    { label: 'Frontend Developer', isActive: true }
+    { label: jobTitle, isActive: true }
   ];
 
   return <Breadcrumb items={breadcrumbItems} />;
