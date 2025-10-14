@@ -66,11 +66,34 @@ interface JobDashboardBreadcrumbProps {
 }
 
 export function JobDashboardBreadcrumb({ job }: JobDashboardBreadcrumbProps) {
-  // Extract job title from job data, same as used in sidebar and cards
-  const jobTitle = job?.sections?.basic_information?.title || 'Job Dashboard';
+  // Debug logging to see what data we're receiving
+  console.log('🔍 JobDashboardBreadcrumb - RENDER CALLED');
+  console.log('🔍 JobDashboardBreadcrumb - job is null/undefined:', job === null || job === undefined);
+  console.log('🔍 JobDashboardBreadcrumb - Full job object:', job);
+
+  if (job) {
+    console.log('🔍 JobDashboardBreadcrumb - Job ID:', job.id);
+    console.log('🔍 JobDashboardBreadcrumb - job.sections:', job?.sections);
+    console.log('🔍 JobDashboardBreadcrumb - job.sections.basic_information:', job?.sections?.basic_information);
+    console.log('🔍 JobDashboardBreadcrumb - job.sections.basic_information.title:', job?.sections?.basic_information?.title);
+  } else {
+    console.log('🔍 JobDashboardBreadcrumb - Job is null/undefined, using fallback');
+  }
+
+  // Check if sections exists and what keys it has
+  if (job?.sections) {
+    console.log('🔍 JobDashboardBreadcrumb - Available section keys:', Object.keys(job.sections));
+    // Check each section for title-like properties
+    Object.keys(job.sections).forEach(key => {
+      console.log(`🔍 JobDashboardBreadcrumb - sections.${key}:`, (job.sections as Record<string, unknown>)[key]);
+    });
+  }
+
+  // Extract job title from job data using the correct structure
+  const jobTitle = job?.sections?.basic_information?.title || 'Job Role';
 
   const breadcrumbItems: BreadcrumbItem[] = [
-    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Job Dashboard', href: '/dashboard' },
     { label: jobTitle, isActive: true }
   ];
 

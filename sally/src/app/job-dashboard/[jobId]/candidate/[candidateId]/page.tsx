@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { JobDashboardSidebar } from '@/components/job-dashboard/sidebar';
+import { JobsSidebar } from '@/components/jobs/sidebar';
 import { CandidateDetailView } from '@/components/job-dashboard/candidate-detail-view';
 import { jobsService, Job } from '@/services/jobs.service';
 import { Candidate } from '@/types/candidates';
@@ -154,7 +154,7 @@ export default function CandidateDetailPage() {
     return (
       <div className="min-h-screen bg-[#F9FAFA]">
         <div className="flex h-screen">
-          <JobDashboardSidebar />
+          <JobsSidebar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -170,7 +170,7 @@ export default function CandidateDetailPage() {
     return (
       <div className="min-h-screen bg-[#F9FAFA]">
         <div className="flex h-screen">
-          <JobDashboardSidebar />
+          <JobsSidebar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <p className="text-red-600 mb-4">Error: {error}</p>
@@ -191,7 +191,7 @@ export default function CandidateDetailPage() {
     return (
       <div className="min-h-screen bg-[#F9FAFA]">
         <div className="flex h-screen">
-          <JobDashboardSidebar />
+          <JobsSidebar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <p className="text-gray-600">Candidate not found</p>
@@ -207,7 +207,7 @@ export default function CandidateDetailPage() {
       {/* Main Layout Container - Matching Figma 1536px width */}
       <div className="flex h-screen max-w-[1536px] mx-auto">
         {/* Left Sidebar - 240px width */}
-        <JobDashboardSidebar />
+        <JobsSidebar />
 
         {/* Main Content Area - 373px width for candidate detail */}
         <CandidateDetailView job={job} candidate={candidate} />

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { JobDashboardSidebar } from '@/components/job-dashboard/sidebar';
+import { JobsSidebar } from '@/components/jobs/sidebar';
 import { JobDashboardContent } from '@/components/job-dashboard/content';
 import { jobsService, Job } from '@/services/jobs.service';
 
@@ -26,6 +26,9 @@ export default function JobSpecificDashboardPage() {
 
         console.log('✅ JobSpecificDashboardPage: Job fetched successfully:', jobData);
         console.log('🆔 JobSpecificDashboardPage: Job ID for candidates:', jobData.id);
+        console.log('🔍 JobSpecificDashboardPage: Job sections:', jobData.sections);
+        console.log('🔍 JobSpecificDashboardPage: Job basic_information:', jobData.sections?.basic_information);
+        console.log('🔍 JobSpecificDashboardPage: Job title:', jobData.sections?.basic_information?.title);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job';
         setError(errorMessage);
@@ -47,7 +50,7 @@ export default function JobSpecificDashboardPage() {
     return (
       <div className="min-h-screen bg-[#F9FAFA]">
         <div className="flex h-screen">
-          <JobDashboardSidebar />
+          <JobsSidebar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -63,7 +66,7 @@ export default function JobSpecificDashboardPage() {
     return (
       <div className="min-h-screen bg-[#F9FAFA]">
         <div className="flex h-screen">
-          <JobDashboardSidebar />
+          <JobsSidebar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <p className="text-red-600 mb-4">Error: {error}</p>
@@ -84,7 +87,7 @@ export default function JobSpecificDashboardPage() {
     return (
       <div className="min-h-screen bg-[#F9FAFA]">
         <div className="flex h-screen">
-          <JobDashboardSidebar />
+          <JobsSidebar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <p className="text-gray-600">Job not found</p>
@@ -100,7 +103,7 @@ export default function JobSpecificDashboardPage() {
       {/* Main Layout Container */}
       <div className="flex h-screen">
         {/* Left Sidebar */}
-        <JobDashboardSidebar />
+        <JobsSidebar />
 
         {/* Main Content Area */}
         <JobDashboardContent job={job} />

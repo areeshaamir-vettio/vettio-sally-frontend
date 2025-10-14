@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import {
   Home,
   Search,
@@ -12,11 +12,9 @@ import {
   MessageSquare,
   Settings,
   ChevronRight,
-  ChevronDown,
   User,
   Bell,
-  Briefcase,
-  LogOut
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobs } from '@/hooks/useJobs';
@@ -82,7 +80,7 @@ export function JobDashboardSidebar() {
                 <SidebarNavItem
                   key={job.id}
                   icon={Users}
-                  label={job.sections?.basic_information?.title || 'Untitled Job'}
+                  label={job.role?.basic_information?.title || 'Untitled Job'}
                   isActive={currentJobId === job.id}
                   href={`/job-dashboard/${job.id}`}
                 />

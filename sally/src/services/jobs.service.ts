@@ -32,32 +32,85 @@ export interface JobAttachment {
   uploaded_by: string;
 }
 
+// Interface for the intake API response
+export interface IntakeRoleResponse {
+  role: {
+    basic_information: {
+      location_text?: string;
+      title?: string;
+    };
+    role_purpose: {
+      job_description?: string;
+    };
+    key_responsibilities: Record<string, any>;
+    skills_qualifications: Record<string, any>;
+    role_context: Record<string, any>;
+    performance_kpis: Record<string, any>;
+    compensation_benefits: Record<string, any>;
+    culture_value_fit: Record<string, any>;
+    hiring_practicalities: Record<string, any>;
+    approval_notes: Record<string, any>;
+    basic_information_complete: boolean;
+    role_purpose_complete: boolean;
+    key_responsibilities_complete: boolean;
+    skills_qualifications_complete: boolean;
+    role_context_complete: boolean;
+    performance_kpis_complete: boolean;
+    compensation_benefits_complete: boolean;
+    culture_value_fit_complete: boolean;
+    hiring_practicalities_complete: boolean;
+    approval_notes_complete: boolean;
+    completed_sections: string[];
+    current_section: string;
+    remaining_sections: string[];
+  };
+  conversation: Record<string, any>;
+  next_question: any;
+  completeness_score: number;
+  is_complete: boolean;
+}
+
 export interface Job {
   id: string;
   organization_id: string;
   status: 'draft' | 'active' | 'closed';
+  title: string;
+  department: string | null;
+  seniority_level: string | null;
+  contract_type: string;
   priority: 'low' | 'medium' | 'high';
-  tags: JobTag[];
-  metadata: Record<string, any>;
-  raw_job_description: string;
+  company_context: any;
+  role_requirements: any;
+  locations: any;
+  compensation: any;
+  job_description: string | null;
+  evaluation_rubric: any;
+  hiring_process: any;
+  disqualifiers: any;
+  nice_to_have: any;
+  raw_job_description: string | null;
   jd_extraction_pending: boolean;
   jd_extracted_at: string | null;
   jd_extraction_error: string | null;
-  searchable_content: SearchableContent;
-  attachments: JobAttachment[];
+  location_text: string;
+  sections: {
+    basic_information: {
+      location_text?: string;
+      title?: string;
+    };
+    role_purpose: {
+      job_description?: string;
+    };
+    [key: string]: any;
+  };
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
   view_count: number;
   application_count: number;
   shortlist_count: number;
-  hire_count: number;
-  workflow_state: string;
-  approval_status: string;
-  published_at: string | null;
-  closed_at: string | null;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
-  updated_by: string | null;
-  sections: Record<string, any>;
+  workflow_state: string | null;
+  approval_status: string | null;
 }
 
 export class JobsService {
@@ -271,18 +324,64 @@ export class JobsService {
             method: 'GET',
             headers: this.getHeaders(),
           });
-          return this.handleResponse<Job>(retryResponse);
+          const intakeResponse = await this.handleResponse<IntakeRoleResponse>(retryResponse);
+          return this.transformIntakeResponseToJob(id, intakeResponse);
         } catch (refreshError) {
           console.error('❌ Token refresh failed:', refreshError);
           throw new Error('Authentication failed');
         }
       }
 
-      return this.handleResponse<Job>(response);
+      const intakeResponse = await this.handleResponse<IntakeRoleResponse>(response);
+      console.log('🔍 JobsService.getJob - Raw intake response:', intakeResponse);
+      console.log('🔍 JobsService.getJob - Role data:', intakeResponse.role);
+      console.log('🔍 JobsService.getJob - Basic information:', intakeResponse.role?.basic_information);
+      console.log('🔍 JobsService.getJob - Job title:', intakeResponse.role?.basic_information?.title);
+
+      return this.transformIntakeResponseToJob(id, intakeResponse);
     } catch (error) {
       console.error('❌ Failed to fetch job:', error);
       throw error;
     }
+  }
+
+  /**
+   * Transform intake API response to Job interface
+   */
+  private transformIntakeResponseToJob(id: string, intakeResponse: IntakeRoleResponse): Job {
+    return {
+      id,
+      organization_id: intakeResponse.role?.organization_id || '',
+      status: 'draft', // Default status
+      title: intakeResponse.role?.basic_information?.title || '',
+      department: null,
+      seniority_level: null,
+      contract_type: 'full_time',
+      priority: 'medium',
+      company_context: null,
+      role_requirements: null,
+      locations: null,
+      compensation: null,
+      job_description: intakeResponse.role?.role_purpose?.job_description || null,
+      evaluation_rubric: null,
+      hiring_process: null,
+      disqualifiers: null,
+      nice_to_have: null,
+      raw_job_description: null,
+      jd_extraction_pending: false,
+      jd_extracted_at: null,
+      jd_extraction_error: null,
+      location_text: intakeResponse.role?.basic_information?.location_text || '',
+      sections: intakeResponse.role,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      created_by: null,
+      view_count: 0,
+      application_count: 0,
+      shortlist_count: 0,
+      workflow_state: null,
+      approval_status: null
+    };
   }
 }
 
