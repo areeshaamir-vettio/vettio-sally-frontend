@@ -172,10 +172,20 @@ export class JobsService {
       console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.status === 401) {
-        console.log('🔄 Got 401, attempting token refresh...');
+        console.log('🔄 JobsService: Got 401, attempting token refresh...');
         try {
+          // Import TokenManager to check refresh token validity
+          const { TokenManager } = await import('@/lib/auth');
+          const refreshToken = TokenManager.getRefreshToken();
+
+          if (!refreshToken || TokenManager.isTokenExpired(refreshToken)) {
+            console.error('❌ JobsService: Refresh token missing or expired');
+            AuthService.performFullLogout();
+            throw new Error('Session expired');
+          }
+
           await AuthService.refreshToken();
-          console.log('✅ Token refreshed, retrying listJobs...');
+          console.log('✅ JobsService: Token refreshed, retrying listJobs...');
           const retryResponse = await fetch(url, {
             method: 'GET',
             headers: this.getHeaders(),
@@ -184,8 +194,15 @@ export class JobsService {
           const result = this.handleResponse<Job[]>(retryResponse);
           console.log('📊 Jobs fetched after retry:', (await result).length);
           return result;
-        } catch (refreshError) {
-          console.error('❌ Token refresh failed:', refreshError);
+        } catch (refreshError: any) {
+          console.warn('⚠️ JobsService: Token refresh failed during listJobs:', refreshError);
+
+          // Only call performFullLogout if it wasn't already called
+          if (!refreshError?.message?.includes('Session expired') &&
+              !refreshError?.message?.includes('Refresh token expired')) {
+            AuthService.performFullLogout();
+          }
+
           throw new Error('Authentication failed');
         }
       }
@@ -196,7 +213,14 @@ export class JobsService {
       return result;
     } catch (error) {
       clearTimeout(timeoutId);
-      console.error('❌ listJobs error:', error);
+
+      // Log as warning instead of error if it's an auth issue during login
+      if (error instanceof Error && error.message.includes('Authentication failed')) {
+        console.warn('⚠️ listJobs authentication error (may be expected during login):', error.message);
+      } else {
+        console.error('❌ listJobs error:', error);
+      }
+
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Request timeout - API call took too long');
       }
@@ -220,30 +244,44 @@ export class JobsService {
       console.log('🔍 Checking if user has jobs...');
 
       try {
-        const jobs = await this.listJobs({ limit: 1 });
+        const jobs = await this.listJobs({ limit: 50, clear_cache: true });
         const hasJobs = jobs.length > 0;
         console.log(`✅ User has ${jobs.length} jobs (hasJobs: ${hasJobs})`);
         return hasJobs;
       } catch (apiError) {
         // If we get a 401, try to refresh the token once
         if (apiError instanceof Error && apiError.message.includes('401')) {
-          console.log('🔄 Got 401, attempting token refresh...');
+          console.log('🔄 JobsService: Got 401 during hasJobs check, attempting token refresh...');
           try {
+            // Import TokenManager to check refresh token validity
+            const { TokenManager } = await import('@/lib/auth');
+            const refreshToken = TokenManager.getRefreshToken();
+
+            if (!refreshToken || TokenManager.isTokenExpired(refreshToken)) {
+              console.error('❌ JobsService: Refresh token missing or expired during hasJobs');
+              AuthService.performFullLogout();
+              return false;
+            }
+
             await AuthService.refreshToken();
-            console.log('✅ Token refreshed, retrying hasJobs...');
-            const jobs = await this.listJobs({ limit: 1 });
+            console.log('✅ JobsService: Token refreshed, retrying hasJobs...');
+            const jobs = await this.listJobs({ limit: 50, clear_cache: true });
             const hasJobs = jobs.length > 0;
-            console.log(`✅ User has ${jobs.length} jobs (hasJobs: ${hasJobs})`);
+            console.log(`✅ User has ${jobs.length} jobs after retry (hasJobs: ${hasJobs})`);
             return hasJobs;
-          } catch (refreshError) {
-            console.error('❌ Token refresh failed:', refreshError);
+          } catch (refreshError: any) {
+            console.warn('⚠️ JobsService: Token refresh failed during hasJobs check:', refreshError);
+            console.log('ℹ️ Defaulting to hasJobs = false, user will be redirected to /get-started');
             return false;
           }
         }
-        throw apiError;
+
+        // For other errors, log and return false
+        console.warn('⚠️ Error checking jobs (defaulting to false):', apiError);
+        return false;
       }
     } catch (error) {
-      console.error('Failed to check if user has jobs:', error);
+      console.warn('⚠️ Failed to check if user has jobs (defaulting to false):', error);
       // In case of error, assume they don't have jobs and redirect to get-started
       return false;
     }
@@ -274,18 +312,35 @@ export class JobsService {
 
       // If we get a 401, try to refresh the token once
       if (response.status === 401) {
-        console.log('🔄 Got 401, attempting token refresh...');
+        console.log('🔄 JobsService: Got 401, attempting token refresh...');
         try {
+          // Import TokenManager to check refresh token validity
+          const { TokenManager } = await import('@/lib/auth');
+          const refreshToken = TokenManager.getRefreshToken();
+
+          if (!refreshToken || TokenManager.isTokenExpired(refreshToken)) {
+            console.error('❌ JobsService: Refresh token missing or expired during createJob');
+            AuthService.performFullLogout();
+            throw new Error('Session expired');
+          }
+
           await AuthService.refreshToken();
-          console.log('✅ Token refreshed, retrying createJob...');
+          console.log('✅ JobsService: Token refreshed, retrying createJob...');
           const retryResponse = await fetch(url, {
             method: 'POST',
             headers: this.getHeaders(),
             body: JSON.stringify(jobData),
           });
           return this.handleResponse<Job>(retryResponse);
-        } catch (refreshError) {
-          console.error('❌ Token refresh failed:', refreshError);
+        } catch (refreshError: any) {
+          console.error('❌ JobsService: Token refresh failed during createJob:', refreshError);
+
+          // Only call performFullLogout if it wasn't already called
+          if (!refreshError?.message?.includes('Session expired') &&
+              !refreshError?.message?.includes('Refresh token expired')) {
+            AuthService.performFullLogout();
+          }
+
           throw new Error('Authentication failed');
         }
       }
@@ -316,18 +371,34 @@ export class JobsService {
 
       // If we get a 401, try to refresh the token once
       if (response.status === 401) {
-        console.log('🔄 Got 401, attempting token refresh...');
+        console.log('🔄 JobsService: Got 401, attempting token refresh...');
         try {
+          // Import TokenManager to check refresh token validity
+          const { TokenManager } = await import('@/lib/auth');
+          const refreshToken = TokenManager.getRefreshToken();
+
+          if (!refreshToken || TokenManager.isTokenExpired(refreshToken)) {
+            console.error('❌ JobsService: Refresh token missing or expired during getJob');
+            AuthService.performFullLogout();
+            throw new Error('Session expired');
+          }
+
           await AuthService.refreshToken();
-          console.log('✅ Token refreshed, retrying getJob...');
+          console.log('✅ JobsService: Token refreshed, retrying getJob...');
           const retryResponse = await fetch(url, {
             method: 'GET',
             headers: this.getHeaders(),
           });
-          const intakeResponse = await this.handleResponse<IntakeRoleResponse>(retryResponse);
-          return this.transformIntakeResponseToJob(id, intakeResponse);
-        } catch (refreshError) {
-          console.error('❌ Token refresh failed:', refreshError);
+          return this.handleResponse<Job>(retryResponse);
+        } catch (refreshError: any) {
+          console.error('❌ JobsService: Token refresh failed during getJob:', refreshError);
+
+          // Only call performFullLogout if it wasn't already called
+          if (!refreshError?.message?.includes('Session expired') &&
+              !refreshError?.message?.includes('Refresh token expired')) {
+            AuthService.performFullLogout();
+          }
+
           throw new Error('Authentication failed');
         }
       }

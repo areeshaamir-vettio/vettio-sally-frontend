@@ -9,14 +9,15 @@ import { JobsTabs } from './tabs';
 import { JobsKanbanBoard } from './kanban-board';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useJobs } from '@/hooks/useJobs';
+import { useJobsContext } from '@/contexts/JobsContext';
 import { getJobDisplayTitle, getStatusColorClass, getPriorityColorClass, getRelativeTime } from '@/utils/job-helpers';
 import { CreateRoleModal } from '@/components/create-role-modal';
+import { apiClient } from '@/lib/api-client';
 
 export function JobsContent() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { jobs, loading: jobsLoading, error: jobsError, fetchJobs } = useJobs();
+  const { jobs, loading: jobsLoading, error: jobsError, fetchJobs } = useJobsContext();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleCreateJob = () => {
@@ -30,6 +31,30 @@ export function JobsContent() {
   const handleJobCreated = () => {
     // Refresh the jobs list after successful creation
     fetchJobs();
+  };
+
+  const handleJobClick = async (jobId: string) => {
+    try {
+      console.log('🔄 Dashboard: Fetching role details for job:', jobId);
+
+      // Call the GET /api/v1/intake/roles/{role_id} API
+      const roleData = await apiClient.getRole(jobId);
+      console.log('✅ Dashboard: Role data fetched:', roleData);
+      console.log('🔍 Dashboard: is_complete value:', roleData.is_complete);
+
+      // Check if role is complete and redirect accordingly
+      if (roleData.is_complete === false) {
+        console.log('🔄 Dashboard: Role is incomplete, redirecting to conversational-ai');
+        router.push(`/conversational-ai?roleId=${jobId}`);
+      } else {
+        console.log('✅ Dashboard: Role is complete, redirecting to job dashboard');
+        router.push(`/job-dashboard/${jobId}`);
+      }
+    } catch (error) {
+      console.error('❌ Dashboard: Error fetching role data:', error);
+      // On error, default to job dashboard
+      router.push(`/job-dashboard/${jobId}`);
+    }
   };
 
   return (
@@ -117,7 +142,11 @@ export function JobsContent() {
               {!jobsLoading && !jobsError && jobs.length > 0 && (
                 <div className="grid gap-4">
                   {jobs.map((job) => (
-                    <div key={job.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div
+                      key={job.id}
+                      className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => handleJobClick(job.id)}
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
@@ -172,10 +201,25 @@ export function JobsContent() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // TODO: Add edit functionality
+                              console.log('Edit job:', job.id);
+                            }}
+                          >
                             Edit
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleJobClick(job.id);
+                            }}
+                          >
                             View
                           </Button>
                         </div>

@@ -45,14 +45,15 @@ class ApiClient {
         console.log('🔍 API Request interceptor - Token available:', !!token);
 
         if (token) {
-          const isExpired = TokenManager.isTokenExpired(token);
-          console.log('🔍 API Request interceptor - Token expired:', isExpired);
+          // Always add the token, even if expired
+          // The response interceptor will handle token refresh if needed
+          config.headers.Authorization = `Bearer ${token}`;
 
-          if (!isExpired) {
-            config.headers.Authorization = `Bearer ${token}`;
-            console.log('✅ API Request interceptor - Added Authorization header');
+          const isExpired = TokenManager.isTokenExpired(token);
+          if (isExpired) {
+            console.log('⚠️ API Request interceptor - Token expired, but adding header (will refresh if 401)');
           } else {
-            console.log('⚠️ API Request interceptor - Token expired, not adding header');
+            console.log('✅ API Request interceptor - Added valid Authorization header');
           }
         } else {
           console.log('❌ API Request interceptor - No token available');
@@ -75,17 +76,41 @@ class ApiClient {
 
           try {
             const refreshToken = TokenManager.getRefreshToken();
-            if (refreshToken) {
-              // Use AuthService.refreshToken which handles the correct API call
-              const newAccessToken = await AuthService.refreshToken();
-
-              // Retry original request with new token
-              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-              return this.axiosInstance(originalRequest);
+            if (!refreshToken) {
+              console.error('❌ API Interceptor: No refresh token available');
+              AuthService.performFullLogout();
+              return Promise.reject(new Error('No refresh token available'));
             }
-          } catch (refreshError) {
-            // Refresh failed, logout user
-            AuthUtils.logout();
+
+            // Check if refresh token is expired
+            if (TokenManager.isTokenExpired(refreshToken)) {
+              console.error('❌ API Interceptor: Refresh token has expired');
+              AuthService.performFullLogout();
+              return Promise.reject(new Error('Refresh token expired'));
+            }
+
+            // Use AuthService.refreshToken which handles the correct API call
+            const newAccessToken = await AuthService.refreshToken();
+
+            // Retry original request with new token
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            return this.axiosInstance(originalRequest);
+          } catch (refreshError: any) {
+            // Refresh failed, perform full logout
+            console.error('❌ API Interceptor: Token refresh failed, logging out');
+
+            // Check if it's an auth error (tokens expired) vs network error
+            const isAuthError = refreshError?.message?.includes('Refresh token expired') ||
+                               refreshError?.message?.includes('No refresh token available') ||
+                               refreshError?.message?.includes('Token refresh failed');
+
+            if (isAuthError) {
+              // Don't call performFullLogout again if it was already called in refreshToken
+              if (!refreshError?.message?.includes('Refresh token expired')) {
+                AuthService.performFullLogout();
+              }
+            }
+
             return Promise.reject(refreshError);
           }
         }

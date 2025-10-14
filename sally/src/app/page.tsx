@@ -14,11 +14,11 @@ export default function HomePage() {
           {/* Left Column - Main Content */}
           <div className="space-y-8">
             <div className="space-y-10">
-              <h1 className="text-4xl font-bold text-black leading-tight">
-                You&apos;re one conversation away from your perfect hire
+              <h1 className="text-2xl font-semibold text-black leading-9">
+                You&apos;re one conversation away from your perfect hire.
               </h1>
-              <p className="text-lg text-[#4D4B4A] leading-relaxed">
-                An intuitive AI interface built to save hours and deliver better hiring outcomes.
+              <p className="text-base text-[#4D4B49] leading-7">
+                An intuitive AI interface built to save hours and deliver top matches.
               </p>
             </div>
 

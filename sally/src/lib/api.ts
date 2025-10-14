@@ -1,4 +1,4 @@
-import { AuthService } from './auth';
+import { AuthService, TokenManager } from './auth';
 
 class ApiClient {
   private baseURL: string;
@@ -16,11 +16,25 @@ class ApiClient {
     // If unauthorized, try to refresh token
     if (response.status === 401 && token) {
       try {
+        // Check if refresh token exists and is valid
+        const refreshToken = TokenManager.getRefreshToken();
+        if (!refreshToken || TokenManager.isTokenExpired(refreshToken)) {
+          console.error('❌ ApiClient: Refresh token missing or expired');
+          AuthService.performFullLogout();
+          throw new Error('Session expired');
+        }
+
         token = await AuthService.refreshToken();
         response = await this.makeRequest(endpoint, token, options);
-      } catch {
-        AuthService.logout();
-        window.location.href = '/login';
+      } catch (error: any) {
+        console.error('❌ ApiClient: Token refresh failed:', error);
+
+        // Only call performFullLogout if it wasn't already called
+        if (!error?.message?.includes('Session expired') &&
+            !error?.message?.includes('Refresh token expired')) {
+          AuthService.performFullLogout();
+        }
+
         throw new Error('Authentication failed');
       }
     }

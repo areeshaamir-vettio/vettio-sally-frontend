@@ -18,7 +18,7 @@ export function FeatureList() {
               <Check className="w-4 h-4 text-white" />
             </div>
           </div>
-          <span className="text-[#2C2B2A] text-base">{feature}</span>
+          <span className="text-[#2C2B2A] text-sm leading-6">{feature}</span>
         </div>
       ))}
     </div>

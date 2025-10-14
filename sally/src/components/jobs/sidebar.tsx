@@ -19,7 +19,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useJobs } from '@/hooks/useJobs';
+import { useJobsContext } from '@/contexts/JobsContext';
 
 interface SidebarNavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -56,6 +56,7 @@ export function JobsSidebar() {
   const handleCancelSignOut = () => {
     setShowSignOutModal(false);
   };
+  // const { jobs, loading: jobsLoading, error: jobsError } = useJobsContext();
 
   // Debug logging
   console.log('JobsSidebar - Auth State:', { user, isAuthenticated, isLoading });

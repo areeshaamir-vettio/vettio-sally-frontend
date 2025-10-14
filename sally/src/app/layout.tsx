@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { SessionProvider } from '@/contexts/SessionContext';
+import { JobsProvider } from '@/contexts/JobsContext';
 import { SessionDebugUntilConversationalAI } from '@/components/session-debug';
 import { RoleDebugDev } from '@/components/role-debug';
 import Script from 'next/script';
@@ -40,16 +41,18 @@ export default function RootLayout({
       >
         <AuthProvider>
           <SessionProvider>
-            {children}
-            {/* Session debug widget - shows from get-started until conversational-ai */}
-            {/* <SessionDebugUntilConversationalAI /> */}
-            {/* Role debug widget - shows current role information */}
-            {/* <RoleDebugDev /> */}
+            <JobsProvider>
+              {children}
+              {/* Session debug widget - shows from get-started until conversational-ai */}
+              {/* <SessionDebugUntilConversationalAI /> */}
+              {/* Role debug widget - shows current role information */}
+              {/* <RoleDebugDev /> */}
+            </JobsProvider>
           </SessionProvider>
         </AuthProvider>
 
-        {/* Load development utilities */}
-        {process.env.NODE_ENV === 'development' && (
+        {/* Load development utilities - Commented out as files don't exist yet */}
+        {/* {process.env.NODE_ENV === 'development' && (
           <>
             <Script id="refresh-token-tester" strategy="afterInteractive">
               {`
@@ -73,7 +76,7 @@ export default function RootLayout({
               `}
             </Script>
           </>
-        )}
+        )} */}
       </body>
     </html>
   );
