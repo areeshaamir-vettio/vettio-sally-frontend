@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useJobs } from '@/hooks/useJobs';
 import { JobCard } from './job-card';
+import { JobStatus } from './filter-bar';
 
 interface KanbanColumn {
   id: string;
@@ -12,7 +13,11 @@ interface KanbanColumn {
   jobs: any[];
 }
 
-export function JobsKanbanBoard() {
+interface JobsKanbanBoardProps {
+  selectedStatus?: JobStatus;
+}
+
+export function JobsKanbanBoard({ selectedStatus = 'all' }: JobsKanbanBoardProps) {
   const { jobs } = useJobs();
   const router = useRouter();
 
@@ -20,16 +25,21 @@ export function JobsKanbanBoard() {
   const columns: KanbanColumn[] = useMemo(() => {
     const allJobs = jobs || [];
 
-    const activeJobs = allJobs.filter(job => job.status === 'active');
-    const draftJobs = allJobs.filter(job => job.status === 'draft'); // Draft jobs are like "paused"
-    const closedJobs = allJobs.filter(job => job.status === 'closed');
+    // Filter jobs based on selected status
+    const filteredJobs = selectedStatus === 'all'
+      ? allJobs
+      : allJobs.filter(job => job.status === selectedStatus);
+
+    const activeJobs = filteredJobs.filter(job => job.status === 'active');
+    const draftJobs = filteredJobs.filter(job => job.status === 'draft');
+    const closedJobs = filteredJobs.filter(job => job.status === 'closed');
 
     return [
       {
         id: 'all',
         title: 'All Jobs',
-        count: allJobs.length,
-        jobs: allJobs
+        count: filteredJobs.length,
+        jobs: filteredJobs
       },
       {
         id: 'draft',
@@ -50,7 +60,7 @@ export function JobsKanbanBoard() {
         jobs: closedJobs
       }
     ];
-  }, [jobs]);
+  }, [jobs, selectedStatus]);
 
   const handleJobClick = (jobId: string) => {
     router.push(`/job-dashboard/${jobId}`);
@@ -61,7 +71,7 @@ export function JobsKanbanBoard() {
       {/* Kanban Board */}
       <div className="flex-1 flex gap-7 overflow-x-auto">
         {columns.map((column) => (
-          <div key={column.id} className="flex-1 min-w-[300px] flex flex-col">
+          <div key={column.id} className="flex-1 min-w-[380px] flex flex-col">
             {/* Column Header */}
             <div className="mb-4">
               <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-[#E7E9EB]">

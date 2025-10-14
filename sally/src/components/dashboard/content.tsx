@@ -4,12 +4,15 @@ import React, { useState } from 'react';
 import { Bell, Search, Filter, Plus } from 'lucide-react';
 import { DashboardBreadcrumb } from './breadcrumb';
 import { JobsKanbanBoard } from './jobs-kanban-board';
+import { FilterBar, JobStatus } from './filter-bar';
 import { Button } from '@/components/ui/button';
 import { useJobs } from '@/hooks/useJobs';
 import { CreateRoleModal } from '@/components/create-role-modal';
 
 export function DashboardContent() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<JobStatus>('all');
+  const [showFilterBar, setShowFilterBar] = useState(false);
   const { jobs } = useJobs();
 
   const handleCreateJob = () => {
@@ -18,6 +21,22 @@ export function DashboardContent() {
 
   const handleCloseModal = () => {
     setIsCreateModalOpen(false);
+  };
+
+  const handleStatusChange = (status: JobStatus) => {
+    setSelectedStatus(status);
+  };
+
+  const toggleFilterBar = () => {
+    setShowFilterBar(!showFilterBar);
+  };
+
+  // Calculate job counts for filter bar
+  const jobCounts = {
+    all: jobs?.length || 0,
+    draft: jobs?.filter(job => job.status === 'draft').length || 0,
+    active: jobs?.filter(job => job.status === 'active').length || 0,
+    closed: jobs?.filter(job => job.status === 'closed').length || 0,
   };
 
   return (
@@ -29,7 +48,12 @@ export function DashboardContent() {
             <DashboardBreadcrumb />
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFilterBar}
+              className={showFilterBar ? 'bg-blue-50 border-blue-200 text-blue-700' : ''}
+            >
               <Filter className="h-4 w-4 mr-2" />
               Filter
             </Button>
@@ -58,8 +82,17 @@ export function DashboardContent() {
           <p className="text-[#6B7280] text-sm">Track and Manage your jobs</p>
         </div>
 
+        {/* Filter Bar */}
+        {showFilterBar && (
+          <FilterBar
+            selectedStatus={selectedStatus}
+            onStatusChange={handleStatusChange}
+            jobCounts={jobCounts}
+          />
+        )}
+
         {/* Jobs Kanban Board */}
-        <JobsKanbanBoard />
+        <JobsKanbanBoard selectedStatus={selectedStatus} />
       </div>
 
       {/* Create Role Modal */}
