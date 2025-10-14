@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useJobs } from '@/hooks/useJobs';
 import { JobCard } from './job-card';
 import { JobStatus } from './filter-bar';
-import { Circle } from 'lucide-react'; // 🟢 added icon import
+import { Circle, MoreVertical } from 'lucide-react'; // 🟣 added MoreVertical
 
 interface KanbanColumn {
   id: string;
@@ -22,10 +22,8 @@ export function JobsKanbanBoard({ selectedStatus = 'all' }: JobsKanbanBoardProps
   const { jobs } = useJobs();
   const router = useRouter();
 
-  // Organize jobs into kanban columns based on status
   const columns: KanbanColumn[] = useMemo(() => {
     const allJobs = jobs || [];
-
     const filteredJobs =
       selectedStatus === 'all'
         ? allJobs
@@ -65,7 +63,6 @@ export function JobsKanbanBoard({ selectedStatus = 'all' }: JobsKanbanBoardProps
 
   return (
     <div className="h-full flex flex-col">
-      {/* Kanban Board */}
       <div className="flex-1 flex gap-3 lg:gap-4 xl:gap-5 overflow-x-auto pb-4">
         {columns.map((column) => (
           <div
@@ -74,9 +71,9 @@ export function JobsKanbanBoard({ selectedStatus = 'all' }: JobsKanbanBoardProps
           >
             {/* Column Header */}
             <div className="mb-3 flex-shrink-0">
-              <div className="flex items-center justify-between p-2.5 lg:p-3 bg-white rounded-lg border border-[#E7E9EB]">
+              <div className="flex items-center justify-between p-2.5 lg:p-3  rounded-lg">
+                {/* Left: Circle + Title + Count */}
                 <div className="flex items-center gap-2">
-                  {/* 🔵 Circle icon */}
                   <Circle
                     className={`h-3.5 w-3.5 ${getCircleColor(column.id)}`}
                     strokeWidth={2}
@@ -88,6 +85,14 @@ export function JobsKanbanBoard({ selectedStatus = 'all' }: JobsKanbanBoardProps
                     {column.count}
                   </span>
                 </div>
+
+                {/* Right: Action Menu (3-dot icon) */}
+                <button
+                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+                  onClick={() => console.log(`Actions for ${column.title}`)}
+                >
+                  <MoreVertical className="h-4 w-4 text-gray-500" />
+                </button>
               </div>
             </div>
 
@@ -97,7 +102,6 @@ export function JobsKanbanBoard({ selectedStatus = 'all' }: JobsKanbanBoardProps
                 <JobCard key={job.id} job={job} onClick={() => handleJobClick(job.id)} />
               ))}
 
-              {/* Empty state */}
               {column.jobs.length === 0 && (
                 <div className="text-center py-8 text-[#6B7280]">
                   <p>No jobs in this category</p>
