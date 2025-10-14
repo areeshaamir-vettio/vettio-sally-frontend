@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Home,
   Search,
@@ -33,30 +33,21 @@ interface SidebarNavItemProps {
 
 export function JobsSidebar() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
-  const { jobs, loading: jobsLoading, error: jobsError } = useJobs();
+  const { jobs, loading: jobsLoading, error: jobsError } = useJobsContext();
+
+  // const { jobs, loading: jobsLoading, error: jobsError } = useJobs();
   const router = useRouter();
+  const pathname = usePathname();
   const [isProfileExpanded, setIsProfileExpanded] = useState(false);
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
-  const handleSignOutClick = () => {
-    setShowSignOutModal(true);
-  };
-
-  const handleConfirmSignOut = async () => {
+  const handleSignOutClick = async () => {
     try {
       await logout();
-      setShowSignOutModal(false);
       router.push('/auth/login');
     } catch (error) {
       console.error('Sign out error:', error);
-      setShowSignOutModal(false);
     }
   };
-
-  const handleCancelSignOut = () => {
-    setShowSignOutModal(false);
-  };
-  // const { jobs, loading: jobsLoading, error: jobsError } = useJobsContext();
 
   // Debug logging
   console.log('JobsSidebar - Auth State:', { user, isAuthenticated, isLoading });
@@ -97,7 +88,7 @@ export function JobsSidebar() {
           <SidebarNavItem
             icon={Briefcase}
             label="Job Dashboard"
-            isActive={true}
+            isActive={pathname === '/dashboard'}
             href="/dashboard"
           />
 
@@ -121,7 +112,7 @@ export function JobsSidebar() {
                   key={job.id}
                   icon={Users}
                   label={job.sections?.basic_information?.title || 'Untitled Job'}
-                  isActive={false}
+                  isActive={pathname.startsWith(`/job-dashboard/${job.id}`)}
                   href={`/job-dashboard/${job.id}`}
                 />
               ))
@@ -201,37 +192,7 @@ export function JobsSidebar() {
         </div>
       )}
 
-      {/* Sign Out Confirmation Modal */}
-      {showSignOutModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <LogOut className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Sign Out</h3>
-                <p className="text-sm text-gray-600">Are you sure you want to sign out?</p>
-              </div>
-            </div>
 
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={handleCancelSignOut}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmSignOut}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

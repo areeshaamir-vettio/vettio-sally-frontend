@@ -69,17 +69,17 @@ export function JobsKanbanBoard({ selectedStatus = 'all' }: JobsKanbanBoardProps
   return (
     <div className="h-full flex flex-col">
       {/* Kanban Board */}
-      <div className="flex-1 flex gap-7 overflow-x-auto">
+      <div className="flex-1 flex gap-3 lg:gap-4 xl:gap-5 overflow-x-auto pb-4">
         {columns.map((column) => (
-          <div key={column.id} className="flex-1 min-w-[380px] flex flex-col">
+          <div key={column.id} className="flex-1 min-w-[260px] sm:min-w-[280px] lg:min-w-[300px] xl:min-w-[320px] flex flex-col">
             {/* Column Header */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-[#E7E9EB]">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-[#1D2025]">
+            <div className="mb-3 flex-shrink-0">
+              <div className="flex items-center justify-between p-2.5 lg:p-3 bg-white rounded-lg border border-[#E7E9EB]">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm lg:text-base font-semibold text-[#1D2025]">
                     {column.title}
                   </h3>
-                  <span className="bg-[#F3F4F6] text-[#6B7280] text-sm font-medium px-2 py-1 rounded-full">
+                  <span className="bg-[#F3F4F6] text-[#6B7280] text-xs font-medium px-1.5 py-0.5 rounded-full">
                     {column.count}
                   </span>
                 </div>
@@ -87,7 +87,7 @@ export function JobsKanbanBoard({ selectedStatus = 'all' }: JobsKanbanBoardProps
             </div>
 
             {/* Column Content */}
-            <div className="flex-1 space-y-3 overflow-y-auto">
+            <div className="flex-1 space-y-2 overflow-y-auto">
               {column.jobs.map((job) => (
                 <JobCard
                   key={job.id}

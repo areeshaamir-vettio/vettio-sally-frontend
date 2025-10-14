@@ -108,7 +108,7 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
   return (
     <div className={`flex-1 flex flex-col bg-[#F9FAFA] overflow-hidden transition-all duration-300 ${isPanelOpen ? 'mr-[373px]' : ''}`}>
       {/* Top Navbar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+      <div className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3 shadow-sm flex-shrink-0">
         <div className="flex items-center justify-between">
           {/* Left side - Breadcrumb */}
           <JobDashboardBreadcrumb job={job} />
@@ -126,20 +126,20 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 p-10 overflow-y-auto">
-        <div className="max-w-full mx-auto space-y-4">
+      <div className="flex-1 p-4 lg:p-6 xl:p-8 overflow-y-auto">
+        <div className="max-w-full mx-auto space-y-3 lg:space-y-4">
           {/* Header Section */}
-          <div className="space-y-4">
+          <div className="space-y-3 lg:space-y-4">
             {/* Page Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-[#1D2025] mb-2">
+                <h1 className="text-xl lg:text-2xl xl:text-3xl font-bold text-[#1D2025] mb-1 lg:mb-2">
                   {jobTitle}
                 </h1>
-                <p className="text-[#6B7280]">
+                <p className="text-sm lg:text-base text-[#6B7280]">
                   Track candidates and shortlist
                 </p>
-               
+
               </div>
               
               
@@ -151,7 +151,7 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
             </div>
 
             {/* Stats Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 xl:gap-6">
               <StatsCard
                 title="Candidates Reached Out"
                 value="234"
@@ -195,20 +195,7 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
           {/* Controls Section */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-4">
-                <h2 className="text-xl font-semibold text-[#1D2025]">
-                  Candidates
-                </h2>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="flex items-center gap-2 shadow-sm border-gray-300">
-                    <Filter className="w-4 h-4" />
-                    Filter
-                  </Button>
-                  <Button variant="outline" size="sm" className="shadow-sm border-gray-300">
-                    Export
-                  </Button>
-                </div>
-              </div>
+             
               <CandidateTabs
                 totalCount={totalCount}
                 newCount={newCount}
@@ -223,18 +210,7 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
               onCandidateSelect={handleCandidateSelect}
             />
 
-            {/* Debug Info */}
-            {/* {process.env.NODE_ENV === 'development' && (
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <h4 className="font-semibold text-yellow-800 mb-2">Debug Info:</h4>
-                <p className="text-sm text-yellow-700">Job ID from prop: {job?.id || 'undefined'}</p>
-                <p className="text-sm text-yellow-700">Job ID from URL: {urlJobId || 'undefined'}</p>
-                <p className="text-sm text-yellow-700">Effective Job ID: {effectiveJobId || 'undefined'}</p>
-                <p className="text-sm text-yellow-700">Job Object Keys: {job ? Object.keys(job).join(', ') : 'No job object'}</p>
-                <p className="text-sm text-yellow-700">Candidates Count: {candidates.length}</p>
-                <p className="text-sm text-yellow-700">Total Count: {totalCount}</p>
-              </div>
-            )} */}
+          
           </div>
         </div>
       </div>
@@ -280,28 +256,28 @@ function StatsCard({ title, value, change, positive }: StatsCardProps) {
   return (
     <div className="bg-white rounded border border-[#E2E8F0] shadow-sm">
       {/* Card Content */}
-      <div className="p-5">
+      <div className="p-3 lg:p-4 xl:p-5">
         {/* Header with Icon and Stat */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-3 lg:mb-4 xl:mb-5">
           {/* Stat Section */}
           <div className="flex-1">
             <div className="mb-1">
-              <h3 className="text-sm font-normal text-[#1E293B] mb-1">{title}</h3>
+              <h3 className="text-xs lg:text-sm font-normal text-[#1E293B] mb-0.5 lg:mb-1">{title}</h3>
             </div>
-            <div className="flex items-center gap-3.5">
-              <span className="text-2xl font-semibold text-[#1E293B]">{value}</span>
+            <div className="flex items-center gap-2 lg:gap-3.5">
+              <span className="text-lg lg:text-xl xl:text-2xl font-semibold text-[#1E293B]">{value}</span>
               {/* Change Indicator */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 lg:gap-1">
                 {positive ? (
-                  <svg className="w-4 h-4 text-[#059669]" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="w-3 h-3 lg:w-4 lg:h-4 text-[#059669]" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 4l8 8h-6v8h-4v-8H4l8-8z"/>
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 text-[#DC2626]" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="w-3 h-3 lg:w-4 lg:h-4 text-[#DC2626]" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 20l-8-8h6V4h4v8h6l-8 8z"/>
                   </svg>
                 )}
-                <span className={`text-sm font-normal opacity-80 ${positive ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
+                <span className={`text-xs lg:text-sm font-normal opacity-80 ${positive ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
                   {change}
                 </span>
               </div>
@@ -309,13 +285,13 @@ function StatsCard({ title, value, change, positive }: StatsCardProps) {
           </div>
 
           {/* Icon Section */}
-          <div className="ml-2">
+          <div className="ml-1 lg:ml-2">
             <Image
               src={getIconPath()}
               alt={title}
-              width={40}
-              height={40}
-              className="w-10 h-10"
+              width={32}
+              height={32}
+              className="w-6 h-6 lg:w-8 lg:h-8 xl:w-10 xl:h-10"
             />
           </div>
         </div>

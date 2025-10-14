@@ -6,8 +6,8 @@ import { DashboardContent } from '@/components/dashboard/content';
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-[#F9FAFA]">
-      <div className="flex h-screen">
+    <div className="h-screen bg-[#F9FAFA] overflow-hidden">
+      <div className="flex h-full">
         <JobsSidebar />
         <DashboardContent />
       </div>

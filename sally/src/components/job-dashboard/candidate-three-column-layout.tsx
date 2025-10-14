@@ -10,6 +10,8 @@ import {
 import { useRoleCandidates } from '@/hooks/useRoleCandidates';
 import { Candidate } from '@/types/candidates';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
+import { Circle, MoreVertical } from "lucide-react";
+
 
 interface CandidateThreeColumnLayoutProps {
   roleId?: string;
@@ -105,122 +107,98 @@ export function CandidateThreeColumnLayout({ roleId, onCandidateSelect }: Candid
     );
   }
   return (
-    <div className="flex flex-col lg:flex-row gap-4 lg:gap-7 h-full">
-      {/* Column 1 - All Applications */}
-      <div className="flex-1 min-h-[300px] lg:min-h-[700px]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 lg:mb-6 gap-2">
-          <h3 className="text-lg font-semibold text-[#1D2025]">All Applications</h3>
+    <div className="flex flex-col xl:flex-row gap-4 xl:gap-7 h-full overflow-hidden">
+      {/* Column 1 - All Candidates */}
+      <div className="flex-1 min-h-[300px] xl:min-h-[700px] max-w-full">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-[#6B7280] bg-white px-3 py-1.5 rounded-full border border-gray-200">
-              {totalCount} total
-            </span>
-            <button
-              onClick={() => refetch()}
-              className="text-[#8952E0] text-sm font-medium hover:text-[#7A47CC] transition-colors"
-              disabled={loading}
-            >
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </button>
+            <Circle className="h-4 w-4 text-orange-500" strokeWidth={2} />
+            <h3 className="text-lg text-[#1D2025]">All Candidates</h3>
+            <h6 className="text-[#6B7280] text-sm">{allCandidates.length}</h6>
           </div>
+          <button
+            className="p-2 rounded-full hover:bg-gray-100 transition"
+            aria-label="More actions"
+          >
+            <MoreVertical className="h-5 w-5 text-[#1D2025]" />
+          </button>
         </div>
 
-        <div className="space-y-4 max-h-[300px] lg:max-h-[620px] overflow-y-auto">
-          {allCandidates.length === 0 ? (
-            renderEmptyState(
-              "No candidates found for this role yet",
-              <User className="w-full h-full" />
-            )
-          ) : (
-            allCandidates.map((candidate) => {
-              // Ensure candidate has required fields
-              if (!candidate || !candidate.id) {
-                console.warn('Invalid candidate data:', candidate);
-                return null;
-              }
-
-              return (
+        <div className="space-y-3 max-h-[640px] overflow-y-auto">
+          {allCandidates.length === 0
+            ? renderEmptyState("No candidates found", <User className="w-full h-full" />)
+            : allCandidates.map((candidate) => (
                 <CandidateCard
                   key={candidate.id}
                   candidate={candidate}
                   roleId={roleId}
                   onCandidateSelect={onCandidateSelect}
                 />
-              );
-            }).filter(Boolean) // Remove null entries
-          )}
+              ))}
         </div>
       </div>
 
-      {/* Column 2 - New Applications */}
-      <div className="flex-1 min-h-[300px] lg:min-h-[700px]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 lg:mb-6 gap-2">
-          <h3 className="text-lg font-semibold text-[#1D2025]">New</h3>
-          <span className="text-sm text-[#6B7280] bg-white px-3 py-1.5 rounded-full border border-gray-200">
-            {newCandidates.length} new
-          </span>
+      {/* Column 2 - New Candidates */}
+      <div className="flex-1 min-h-[300px] xl:min-h-[700px] max-w-full">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <Circle className="h-4 w-4 text-blue-500" strokeWidth={2} />
+            <h3 className="text-lg text-[#1D2025]">New</h3>
+            <h6 className="text-[#6B7280] text-sm">{newCandidates.length}</h6>
+          </div>
+          <button
+            className="p-2 rounded-full hover:bg-gray-100 transition"
+            aria-label="More actions"
+          >
+            <MoreVertical className="h-5 w-5 text-[#1D2025]" />
+          </button>
         </div>
 
-        <div className="space-y-4 max-h-[300px] lg:max-h-[620px] overflow-y-auto">
-          {newCandidates.length === 0 ? (
-            renderEmptyState(
-              "No new candidates at the moment",
-              <User className="w-full h-full" />
-            )
-          ) : (
-            newCandidates.map((candidate) => {
-              if (!candidate || !candidate.id) {
-                console.warn('Invalid new candidate data:', candidate);
-                return null;
-              }
-
-              return (
+        <div className="space-y-3 max-h-[640px] overflow-y-auto">
+          {newCandidates.length === 0
+            ? renderEmptyState("No new candidates", <User className="w-full h-full" />)
+            : newCandidates.map((candidate) => (
                 <CandidateCard
                   key={`new-${candidate.id}`}
                   candidate={candidate}
                   roleId={roleId}
                   onCandidateSelect={onCandidateSelect}
                 />
-              );
-            }).filter(Boolean)
-          )}
+              ))}
         </div>
       </div>
 
       {/* Column 3 - Shortlisted */}
-      <div className="flex-1 min-h-[300px] lg:min-h-[700px]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 lg:mb-6 gap-2">
-          <h3 className="text-lg font-semibold text-[#1D2025]">Shortlisted</h3>
-          <span className="text-sm text-[#6B7280] bg-white px-3 py-1.5 rounded-full border border-gray-200">
-            {shortlistedCandidates.length} shortlisted
-          </span>
+      <div className="flex-1 min-h-[300px] xl:min-h-[700px] max-w-full">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <Circle className="h-4 w-4 text-green-500" strokeWidth={2} />
+            <h3 className="text-lg text-[#1D2025]">Shortlisted</h3>
+            <h6 className="text-[#6B7280] text-sm">{shortlistedCandidates.length}</h6>
+          </div>
+          <button
+            className="p-2 rounded-full hover:bg-gray-100 transition"
+            aria-label="More actions"
+          >
+            <MoreVertical className="h-5 w-5 text-[#1D2025]" />
+          </button>
         </div>
 
-        <div className="space-y-4 max-h-[300px] lg:max-h-[620px] overflow-y-auto">
-          {shortlistedCandidates.length === 0 ? (
-            renderEmptyState(
-              "No candidates shortlisted yet",
-              <Star className="w-full h-full" />
-            )
-          ) : (
-            shortlistedCandidates.map((candidate) => {
-              if (!candidate || !candidate.id) {
-                console.warn('Invalid shortlisted candidate data:', candidate);
-                return null;
-              }
-
-              return (
+        <div className="space-y-3 max-h-[640px] overflow-y-auto">
+          {shortlistedCandidates.length === 0
+            ? renderEmptyState("No shortlisted candidates", <Star className="w-full h-full" />)
+            : shortlistedCandidates.map((candidate) => (
                 <CandidateCard
                   key={`shortlisted-${candidate.id}`}
                   candidate={candidate}
                   roleId={roleId}
                   onCandidateSelect={onCandidateSelect}
                 />
-              );
-            }).filter(Boolean)
-          )}
+              ))}
         </div>
       </div>
     </div>
+
   );
 }
 

@@ -99,9 +99,9 @@ export default function JobSpecificDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFA]">
+    <div className="h-screen bg-[#F9FAFA] overflow-hidden">
       {/* Main Layout Container */}
-      <div className="flex h-screen">
+      <div className="flex h-full">
         {/* Left Sidebar */}
         <JobsSidebar />
 
