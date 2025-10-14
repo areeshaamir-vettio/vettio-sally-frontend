@@ -105,10 +105,10 @@ export function CandidateThreeColumnLayout({ roleId, onCandidateSelect }: Candid
     );
   }
   return (
-    <div className="flex gap-7 h-full">
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-7 h-full">
       {/* Column 1 - All Applications */}
-      <div className="flex-1 min-h-[700px]">
-        <div className="flex items-center justify-between mb-6">
+      <div className="flex-1 min-h-[300px] lg:min-h-[700px]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 lg:mb-6 gap-2">
           <h3 className="text-lg font-semibold text-[#1D2025]">All Applications</h3>
           <div className="flex items-center gap-3">
             <span className="text-sm text-[#6B7280] bg-white px-3 py-1.5 rounded-full border border-gray-200">
@@ -124,7 +124,7 @@ export function CandidateThreeColumnLayout({ roleId, onCandidateSelect }: Candid
           </div>
         </div>
 
-        <div className="space-y-4 max-h-[620px] overflow-y-auto">
+        <div className="space-y-4 max-h-[300px] lg:max-h-[620px] overflow-y-auto">
           {allCandidates.length === 0 ? (
             renderEmptyState(
               "No candidates found for this role yet",
@@ -152,15 +152,15 @@ export function CandidateThreeColumnLayout({ roleId, onCandidateSelect }: Candid
       </div>
 
       {/* Column 2 - New Applications */}
-      <div className="flex-1 min-h-[700px]">
-        <div className="flex items-center justify-between mb-6">
+      <div className="flex-1 min-h-[300px] lg:min-h-[700px]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 lg:mb-6 gap-2">
           <h3 className="text-lg font-semibold text-[#1D2025]">New</h3>
           <span className="text-sm text-[#6B7280] bg-white px-3 py-1.5 rounded-full border border-gray-200">
             {newCandidates.length} new
           </span>
         </div>
 
-        <div className="space-y-4 max-h-[620px] overflow-y-auto">
+        <div className="space-y-4 max-h-[300px] lg:max-h-[620px] overflow-y-auto">
           {newCandidates.length === 0 ? (
             renderEmptyState(
               "No new candidates at the moment",
@@ -187,15 +187,15 @@ export function CandidateThreeColumnLayout({ roleId, onCandidateSelect }: Candid
       </div>
 
       {/* Column 3 - Shortlisted */}
-      <div className="flex-1 min-h-[700px]">
-        <div className="flex items-center justify-between mb-6">
+      <div className="flex-1 min-h-[300px] lg:min-h-[700px]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 lg:mb-6 gap-2">
           <h3 className="text-lg font-semibold text-[#1D2025]">Shortlisted</h3>
           <span className="text-sm text-[#6B7280] bg-white px-3 py-1.5 rounded-full border border-gray-200">
             {shortlistedCandidates.length} shortlisted
           </span>
         </div>
 
-        <div className="space-y-4 max-h-[620px] overflow-y-auto">
+        <div className="space-y-4 max-h-[300px] lg:max-h-[620px] overflow-y-auto">
           {shortlistedCandidates.length === 0 ? (
             renderEmptyState(
               "No candidates shortlisted yet",

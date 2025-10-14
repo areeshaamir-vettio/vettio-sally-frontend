@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { JobDashboardSidebar } from '@/components/job-dashboard/sidebar';
+import { JobsSidebar } from '@/components/jobs/sidebar';
 import { JobDashboardContent } from '@/components/job-dashboard/content';
 
 export default function JobDashboardPage() {
@@ -10,7 +10,7 @@ export default function JobDashboardPage() {
       {/* Main Layout Container */}
       <div className="flex h-screen">
         {/* Left Sidebar */}
-        <JobDashboardSidebar />
+        <JobsSidebar />
 
         {/* Main Content Area */}
         <JobDashboardContent />
