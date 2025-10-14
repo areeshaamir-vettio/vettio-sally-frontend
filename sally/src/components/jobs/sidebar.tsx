@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   Home,
   Search,
@@ -36,14 +36,13 @@ export function JobsSidebar() {
   const { jobs, loading: jobsLoading, error: jobsError } = useJobsContext();
 
   // const { jobs, loading: jobsLoading, error: jobsError } = useJobs();
-  const router = useRouter();
   const pathname = usePathname();
   const [isProfileExpanded, setIsProfileExpanded] = useState(false);
 
   const handleSignOutClick = async () => {
     try {
-      await logout();
-      router.push('/auth/login');
+      // The logout function already handles navigation, so we don't need to call router.push
+      logout();
     } catch (error) {
       console.error('Sign out error:', error);
     }

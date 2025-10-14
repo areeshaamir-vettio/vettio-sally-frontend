@@ -111,7 +111,7 @@ export function CandidateDetailPanel({ job, candidate, onClose }: CandidateDetai
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {/* Details Section */}
-        <DetailsSection candidate={candidate} />
+        {/* <DetailsSection candidate={candidate} /> */}
 
         {/* Key Highlights Section */}
         <KeyHighlightsSection />
@@ -316,9 +316,9 @@ function ExperienceSection({ experience }: { experience?: any }) {
               <Calendar className="w-3 h-3" />
               <span>{exp.duration}</span>
             </div>
-            {exp.description && (
+            {/* {exp.description && (
               <p className="text-sm font-normal text-[#374151] leading-relaxed">{exp.description}</p>
-            )}
+            )} */}
           </div>
         ))}
       </div>

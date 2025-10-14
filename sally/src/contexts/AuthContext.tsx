@@ -139,6 +139,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Set loading state to prevent flash of content during logout
+    setState(prev => ({ ...prev, isLoading: true }));
+
     AuthService.logout();
 
     setState({
@@ -146,7 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: false,
       isLoading: false,
     });
-    // Navigate to home page after logout
+
+    // Navigate to landing page after logout
     router.push('/');
   };
 

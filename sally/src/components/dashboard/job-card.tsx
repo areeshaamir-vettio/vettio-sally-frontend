@@ -32,7 +32,7 @@ export function JobCard({ job, onClick }: JobCardProps) {
   const title = job.sections?.basic_information?.title || 'Untitled Job';
   const location = job.sections?.basic_information?.location || job.sections?.job_details?.location || 'Remote';
   const department = job.sections?.basic_information?.department || job.sections?.job_details?.department || 'Engineering';
-  const salaryRange = job.sections?.compensation?.salary_range || job.sections?.job_details?.salary_range || 'PKR 80,000 - 120,000';
+  const salaryRange = job.sections?.compensation?.salary_range || job.sections?.job_details?.salary_range || '80,000 - 120,000';
   const jobType = job.sections?.job_details?.employment_type || job.sections?.basic_information?.employment_type || 'Full-time';
   const company = job.sections?.basic_information?.company || 'Vettio';
 

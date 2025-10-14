@@ -265,7 +265,7 @@ function StatsCard({ title, value, change, positive }: StatsCardProps) {
               <h3 className="text-xs lg:text-sm font-normal text-[#1E293B] mb-0.5 lg:mb-1">{title}</h3>
             </div>
             <div className="flex items-center gap-2 lg:gap-3.5">
-              <span className="text-lg lg:text-xl xl:text-2xl font-semibold text-[#1E293B]">{value}</span>
+              <span className="text-3xl lg:text-3xl xl:text-3xl font-semibold text-[#1E293B]">{value}</span>
               {/* Change Indicator */}
               <div className="flex items-center gap-0.5 lg:gap-1">
                 {positive ? (
