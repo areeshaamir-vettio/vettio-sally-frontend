@@ -1,14 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Volume2, VolumeX } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
-import { VoiceAgentWidget } from '@/components/voice-agent-widget';
+import { VoiceStatusIndicator } from '@/components/voice-status-indicator';
 // import { ChatInterface } from '@/components/chat-interface';
 import { ProfileDrawer } from '@/components/profile-drawer';
 import { conversationalAiApi, ConversationalApiError } from '@/lib/conversational-ai-api';
 import { RoleEnhancementResponse } from '@/types/role-enhancement';
+
+// TypeScript declarations for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
 
 export default function ConversationalAIPage() {
   const router = useRouter();
@@ -24,7 +42,17 @@ export default function ConversationalAIPage() {
   const [isVoiceListening, setIsVoiceListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioContextInitialized, setAudioContextInitialized] = useState(false);
-  const [userInteracted, setUserInteracted] = useState(false);
+
+  // Voice recognition state
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [currentTranscript, setCurrentTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const accumulatedTranscriptRef = useRef<string>('');
+  const pendingQuestionRef = useRef<string | null>(null);
+  const hasSpokenInitialQuestion = useRef<boolean>(false);
+  const isRecognitionActive = useRef<boolean>(false);
+  const shouldPreventRestart = useRef<boolean>(false);
 
   // Text-to-Speech function with female voice configuration
   const speakText = (text: string) => {
@@ -92,11 +120,39 @@ export default function ConversationalAIPage() {
       utterance.onstart = () => {
         setIsSpeaking(true);
         console.log('🔊 Speech started');
+
+        // Reset the prevent restart flag now that speech has started
+        shouldPreventRestart.current = false;
+
+        // Pause voice recognition to prevent echo
+        if (recognitionRef.current && isRecognitionActive.current) {
+          try {
+            recognitionRef.current.stop();
+            isRecognitionActive.current = false;
+            console.log('⏸️ Voice recognition paused during agent speech');
+          } catch (err) {
+            console.error('Failed to pause recognition:', err);
+          }
+        }
       };
 
       utterance.onend = () => {
         setIsSpeaking(false);
         console.log('✅ Speech ended');
+
+        // Resume voice recognition automatically after a short delay
+        if (recognitionRef.current && isInitialized) {
+          try {
+            setTimeout(() => {
+              if (recognitionRef.current) {
+                recognitionRef.current.start();
+                console.log('▶️ Voice recognition resumed automatically');
+              }
+            }, 300); // 300ms delay to ensure speech has fully stopped
+          } catch (err) {
+            console.error('Failed to resume recognition:', err);
+          }
+        }
       };
 
       utterance.onerror = (event) => {
@@ -104,6 +160,21 @@ export default function ConversationalAIPage() {
         if (event.error === 'interrupted') {
           console.log('ℹ️ Speech interrupted (user started speaking)');
           setIsSpeaking(false);
+          return;
+        }
+
+        // Handle "not-allowed" error (browser autoplay policy)
+        if (event.error === 'not-allowed') {
+          console.log('⚠️ Speech blocked by browser autoplay policy');
+          console.log('ℹ️ Speech will start when microphone permission is granted');
+          setIsSpeaking(false);
+
+          // Store the text to speak later
+          if (!hasSpokenInitialQuestion.current) {
+            pendingQuestionRef.current = text;
+            console.log('📝 Stored pending question to speak after mic permission');
+          }
+
           return;
         }
 
@@ -144,7 +215,7 @@ export default function ConversationalAIPage() {
     }
   };
 
-  // Initialize audio context on page load to bypass autoplay restrictions
+  // Initialize audio context on page load
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -166,30 +237,7 @@ export default function ConversationalAIPage() {
       window.speechSynthesis.onvoiceschanged = initAudio;
     }
 
-    // Track user interaction to enable speech
-    const handleFirstInteraction = () => {
-      setUserInteracted(true);
-      if (window.speechSynthesis) {
-        // Create a silent utterance to unlock audio context
-        const silentUtterance = new SpeechSynthesisUtterance('');
-        silentUtterance.volume = 0;
-        window.speechSynthesis.speak(silentUtterance);
-        setAudioContextInitialized(true);
-        console.log('✅ Audio context unlocked after user interaction');
-      }
-    };
-
-    // Listen for any user interaction
-    const events = ['click', 'touchstart', 'keydown'];
-    events.forEach(event => {
-      document.addEventListener(event, handleFirstInteraction, { once: true });
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleFirstInteraction);
-      });
-    };
+    // No need to wait for user interaction - we'll handle autoplay blocking in error handler
   }, []);
 
   // Extract role ID from URL query parameter on mount
@@ -244,13 +292,15 @@ export default function ConversationalAIPage() {
         setConversationData(response);
         setIsInitialized(true);
 
-        // Speak the initial question immediately
+        // Auto-speak initial question immediately on page load
         if (response.next_question) {
           console.log('🔊 Auto-speaking initial question on page load');
+
           // Small delay to ensure audio context is ready
           setTimeout(() => {
             speakText(response.next_question);
-          }, 100);
+            hasSpokenInitialQuestion.current = true;
+          }, 500);
         }
       } catch (err) {
         console.error('❌ ConversationalAI: Failed to initialize conversation - Full error:', err);
@@ -285,6 +335,193 @@ export default function ConversationalAIPage() {
       }
     };
   }, [roleId]);
+
+  // Auto-start voice recognition after conversation is initialized
+  useEffect(() => {
+    if (!isInitialized || typeof window === 'undefined') return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setVoiceError('Speech recognition not supported in this browser. Please use Chrome, Safari, or Edge.');
+      console.error('❌ Speech recognition not supported');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      isRecognitionActive.current = true;
+      setIsVoiceListening(true);
+      console.log('✅ Voice recognition started automatically');
+
+      // If there's a pending question (blocked by autoplay), speak it now
+      if (pendingQuestionRef.current && !hasSpokenInitialQuestion.current) {
+        console.log('🔊 Speaking pending initial question now that mic is active');
+        const questionToSpeak = pendingQuestionRef.current;
+        pendingQuestionRef.current = null;
+        hasSpokenInitialQuestion.current = true;
+
+        // Small delay to ensure mic permission is fully granted
+        setTimeout(() => {
+          speakText(questionToSpeak);
+        }, 100);
+      }
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript.trim()) {
+        // Accumulate final transcripts using ref
+        accumulatedTranscriptRef.current += finalTranscript;
+        console.log('🎤 Accumulated transcript:', accumulatedTranscriptRef.current);
+
+        // Update current transcript for display
+        setCurrentTranscript(accumulatedTranscriptRef.current + interimTranscript);
+
+        // Clear existing silence timeout
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+        }
+
+        // Auto-send after 0.5 seconds of silence
+        silenceTimeoutRef.current = setTimeout(() => {
+          const textToSend = accumulatedTranscriptRef.current.trim();
+
+          if (textToSend) {
+            console.log('🎤 Sending voice input after 0.5s silence:', textToSend);
+            handleVoiceInput(textToSend);
+
+            // Clear accumulated transcript after sending
+            accumulatedTranscriptRef.current = '';
+            setCurrentTranscript('');
+          }
+        }, 500); // 0.5 seconds
+      } else {
+        // Show interim results
+        setCurrentTranscript(accumulatedTranscriptRef.current + interimTranscript);
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      // Handle expected/harmless errors silently
+      if (event.error === 'no-speech') {
+        console.log('ℹ️ No speech detected, continuing to listen...');
+        return;
+      }
+
+      if (event.error === 'aborted') {
+        console.log('ℹ️ Speech recognition aborted (expected when stopping)');
+        return;
+      }
+
+      // Handle permission errors
+      if (event.error === 'not-allowed') {
+        console.error('❌ Speech recognition error:', event.error);
+        setVoiceError('Microphone permission denied. Please allow microphone access and refresh the page.');
+        setIsVoiceListening(false);
+        return;
+      }
+
+      // Log and handle unexpected errors
+      console.error('❌ Speech recognition error:', event.error);
+      setVoiceError(`Voice recognition error: ${event.error}`);
+      setIsVoiceListening(false);
+    };
+
+    recognition.onend = () => {
+      isRecognitionActive.current = false;
+
+      // Don't auto-restart if we're about to speak a response
+      if (shouldPreventRestart.current) {
+        console.log('🛑 Recognition ended, not restarting (about to speak response)');
+        setIsVoiceListening(false);
+        return;
+      }
+
+      // Auto-restart if still initialized and not speaking
+      if (isInitialized && !isSpeaking) {
+        try {
+          console.log('🔄 Recognition ended, restarting...');
+          // Small delay to ensure clean restart
+          setTimeout(() => {
+            if (!isRecognitionActive.current && !isSpeaking && !shouldPreventRestart.current) {
+              try {
+                recognition.start();
+              } catch (restartErr: any) {
+                if (restartErr?.message?.includes('already started')) {
+                  console.log('ℹ️ Recognition already restarted elsewhere');
+                } else {
+                  console.error('Failed to restart recognition:', restartErr);
+                }
+              }
+            }
+          }, 100);
+        } catch (err) {
+          console.error('Failed to restart recognition:', err);
+        }
+      } else {
+        console.log('🛑 Recognition ended, not restarting (speaking or not initialized)');
+        setIsVoiceListening(false);
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    // Start recognition automatically after a short delay
+    // This delay ensures the initial question has started speaking
+    const startDelay = setTimeout(() => {
+      try {
+        // Don't start if agent is speaking or if recognition is already active
+        if (!isSpeaking && !isRecognitionActive.current) {
+          recognition.start();
+          console.log('🎤 Auto-started voice recognition');
+        } else if (isRecognitionActive.current) {
+          console.log('ℹ️ Recognition already active, skipping auto-start');
+        } else {
+          console.log('⏸️ Delaying voice recognition start (agent is speaking)');
+        }
+      } catch (err: any) {
+        // Only show error if it's not an "already started" error
+        if (err?.message?.includes('already started')) {
+          console.log('ℹ️ Recognition already started (caught in try-catch), continuing...');
+        } else {
+          console.error('Failed to start recognition:', err);
+          setVoiceError('Failed to start voice recognition. Please check microphone permissions.');
+        }
+      }
+    }, 1000); // 1 second delay
+
+    return () => {
+      clearTimeout(startDelay);
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+          isRecognitionActive.current = false;
+        } catch (err) {
+          console.error('Error stopping recognition:', err);
+        }
+      }
+    };
+  }, [isInitialized, isSpeaking]);
 
   // Handle sending a message with enhanced error logging
   const handleSendMessage = async (message: string) => {
@@ -397,17 +634,24 @@ export default function ConversationalAIPage() {
   // Handle voice input - same as text message
   const handleVoiceInput = async (transcript: string) => {
     if (!transcript.trim()) return;
-    console.log('🎤 Voice input received:', transcript);
-    await handleSendMessage(transcript);
-  };
 
-  // Handle voice listening state change with interruption logic
-  const handleVoiceListeningChange = (listening: boolean) => {
-    setIsVoiceListening(listening);
-    if (listening) {
-      console.log('🎤 Voice input started, stopping AI speech');
-      stopSpeaking();
+    console.log('🎤 Voice input received:', transcript);
+
+    // Prevent auto-restart while we're about to speak the response
+    shouldPreventRestart.current = true;
+
+    // Stop voice recognition before sending message
+    if (recognitionRef.current && isRecognitionActive.current) {
+      try {
+        recognitionRef.current.stop();
+        isRecognitionActive.current = false;
+        console.log('⏸️ Voice recognition stopped for message send');
+      } catch (err) {
+        console.error('Failed to stop recognition:', err);
+      }
     }
+
+    await handleSendMessage(transcript);
   };
 
   // Handle error from child components
@@ -500,13 +744,13 @@ export default function ConversationalAIPage() {
               </h1>
             </div>
 
-            {/* Voice Agent Widget - Centered */}
+            {/* Voice Status Indicator - No Button, Fully Automatic */}
             <div className="flex items-center justify-center">
-              <VoiceAgentWidget
-                sessionId={sessionId}
-                onVoiceInput={handleVoiceInput}
-                onListeningChange={handleVoiceListeningChange}
-                disabled={!isInitialized || isSendingMessage}
+              <VoiceStatusIndicator
+                isListening={isVoiceListening}
+                isSpeaking={isSpeaking}
+                transcript={currentTranscript}
+                error={voiceError}
               />
             </div>
 

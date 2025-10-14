@@ -22,6 +22,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [hasJobs, setHasJobs] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   const fetchJobs = useCallback(async (customOptions?: JobsListOptions) => {
     // Prevent duplicate fetches if already loading
@@ -83,21 +84,34 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     await fetchJobs();
   }, [fetchJobs]);
 
-  // Auto-fetch jobs on mount (only once) - but only if user is authenticated
+  // Monitor auth token changes and update state
   useEffect(() => {
-    // Check if user is authenticated before fetching jobs
-    const token = AuthService.getAccessToken();
+    const checkToken = () => {
+      const token = AuthService.getAccessToken();
+      setAuthToken(token || null);
+    };
 
-    if (!token) {
+    // Check immediately
+    checkToken();
+
+    // Set up an interval to check for token changes
+    const interval = setInterval(checkToken, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-fetch jobs when auth token becomes available
+  useEffect(() => {
+    if (!authToken) {
       console.log('⏭️ JobsContext: No auth token, skipping auto-fetch');
       return;
     }
 
     if (!hasFetched && !loading) {
-      console.log('🚀 JobsContext: Auto-fetching jobs on mount');
+      console.log('🚀 JobsContext: Auth token detected, auto-fetching jobs');
       fetchJobs();
     }
-  }, []); // Empty dependency array - only run once on mount
+  }, [authToken, hasFetched, loading, fetchJobs]); // Trigger when authToken changes
 
   return (
     <JobsContext.Provider
