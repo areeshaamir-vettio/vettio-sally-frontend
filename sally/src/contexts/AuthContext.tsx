@@ -70,6 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // If /me endpoint succeeds, user is approved, proceed with normal routing
         console.log('✅ AuthContext.login: User is approved, proceeding with post-auth routing...');
+
+        // Add a small delay to ensure auth state is fully settled before routing
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
         console.log('🔄 AuthContext.login: Calling getPostAuthRedirectPath...');
         const redirectPath = await getPostAuthRedirectPath();
@@ -161,6 +165,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             // If /me endpoint succeeds, user is approved, proceed with normal routing
             console.log('✅ AuthContext.register: User is approved, proceeding with post-auth routing...');
+
+            // Add a small delay to ensure auth state is fully settled before routing
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
             const redirectPath = await getPostAuthRedirectPath();
             console.log('🔄 Register - Redirecting to:', redirectPath);

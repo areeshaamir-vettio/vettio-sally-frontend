@@ -131,6 +131,12 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Don't auto-fetch if we're on login page (to prevent race condition during login flow)
+    if (typeof window !== 'undefined' && window.location.pathname === '/login') {
+      console.log('⏭️ JobsContext: On login page, skipping auto-fetch to prevent race condition');
+      return;
+    }
+
     if (!hasFetched && !loading) {
       console.log('🚀 JobsContext: Auth token detected, auto-fetching jobs');
       fetchJobs();
