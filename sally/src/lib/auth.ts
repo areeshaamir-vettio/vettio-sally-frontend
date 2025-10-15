@@ -11,18 +11,56 @@ export class AuthService {
 
   static async login(email: string, password: string): Promise<LoginResponse> {
     console.log('🔄 AuthService.login: Starting login request...');
-    const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    console.log('🌐 AuthService.login: API URL:', `${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`);
+    console.log('🌐 AuthService.login: Base URL from env:', process.env.NEXT_PUBLIC_API_URL);
+    console.log('📧 AuthService.login: Email:', email);
 
-    console.log('📡 AuthService.login: Response status:', response.status);
+    // Check if API URL is accessible
+    if (!API_BASE_URL || API_BASE_URL === 'undefined') {
+      throw new Error('API URL is not configured. Please check your environment variables.');
+    }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('❌ AuthService.login: Login failed:', errorData);
-      throw new Error(errorData.message || 'Login failed');
+    let response: Response;
+    try {
+      // Create a timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Login request timeout after 15 seconds')), 15000);
+      });
+
+      // Race between fetch and timeout
+      response = await Promise.race([
+        fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        }),
+        timeoutPromise
+      ]);
+
+      console.log('📡 AuthService.login: Response status:', response.status);
+      console.log('📡 AuthService.login: Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ AuthService.login: Error response text:', errorText);
+
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (parseError) {
+          console.error('❌ AuthService.login: Failed to parse error response:', parseError);
+          errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
+        }
+
+        console.error('❌ AuthService.login: Login failed:', errorData);
+        throw new Error(errorData.message || `Login failed with status ${response.status}`);
+      }
+    } catch (networkError) {
+      console.error('❌ AuthService.login: Network error:', networkError);
+      if (networkError instanceof TypeError && networkError.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to server. Please check your internet connection.');
+      }
+      throw networkError;
     }
 
     const data: LoginResponse = await response.json();
