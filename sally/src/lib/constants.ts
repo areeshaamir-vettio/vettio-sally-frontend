@@ -58,7 +58,7 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `/dashboard/${id}`,
   },
   
-  // Candidates (placeholder for future implementation)
+  // Candidates
   CANDIDATES: {
     LIST: '/candidates',
     CREATE: '/candidates',
@@ -66,6 +66,11 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/candidates/${id}`,
     DELETE: (id: string) => `/candidates/${id}`,
     SEARCH: '/candidates/search',
+  },
+
+  // Sourcing - Role Candidates
+  SOURCING: {
+    ROLE_CANDIDATES: (roleId: string) => `/api/v1/sourcing/roles/${roleId}/candidates`,
   },
   
   // Search

@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   Home,
   Search,
@@ -11,9 +12,11 @@ import {
   MessageSquare,
   Settings,
   ChevronRight,
+  ChevronDown,
   User,
   Bell,
-  Briefcase
+  Briefcase,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobsContext } from '@/contexts/JobsContext';
@@ -24,11 +27,26 @@ interface SidebarNavItemProps {
   isActive?: boolean;
   href?: string;
   onClick?: () => void;
+  hasChevron?: boolean;
+  isExpanded?: boolean;
 }
 
 export function JobsSidebar() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const { jobs, loading: jobsLoading, error: jobsError } = useJobsContext();
+
+  // const { jobs, loading: jobsLoading, error: jobsError } = useJobs();
+  const pathname = usePathname();
+  const [isProfileExpanded, setIsProfileExpanded] = useState(false);
+
+  const handleSignOutClick = async () => {
+    try {
+      // The logout function already handles navigation, so we don't need to call router.push
+      logout();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
 
   // Debug logging
   console.log('JobsSidebar - Auth State:', { user, isAuthenticated, isLoading });
@@ -69,7 +87,8 @@ export function JobsSidebar() {
           <SidebarNavItem
             icon={Briefcase}
             label="Job Dashboard"
-            isActive={true}
+            isActive={pathname === '/dashboard'}
+            href="/dashboard"
           />
 
           {/* Job Role Subsections */}
@@ -92,7 +111,7 @@ export function JobsSidebar() {
                   key={job.id}
                   icon={Users}
                   label={job.sections?.basic_information?.title || 'Untitled Job'}
-                  isActive={false}
+                  isActive={pathname.startsWith(`/job-dashboard/${job.id}`)}
                   href={`/job-dashboard/${job.id}`}
                 />
               ))
@@ -123,7 +142,23 @@ export function JobsSidebar() {
               icon={User}
               label="Profile"
               isActive={false}
+              hasChevron={true}
+              isExpanded={isProfileExpanded}
+              onClick={() => setIsProfileExpanded(!isProfileExpanded)}
             />
+
+            {/* Profile Submenu */}
+            {isProfileExpanded && (
+              <div className="ml-6 space-y-1 mt-1">
+                <SidebarNavItem
+                  icon={LogOut}
+                  label="Sign Out"
+                  isActive={false}
+                  onClick={handleSignOutClick}
+                />
+              </div>
+            )}
+
             <SidebarNavItem
               icon={Settings}
               label="Settings"
@@ -155,16 +190,23 @@ export function JobsSidebar() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }
 
-function SidebarNavItem({ icon: Icon, label, isActive = false, href, onClick }: SidebarNavItemProps) {
+function SidebarNavItem({ icon: Icon, label, isActive = false, href, onClick, hasChevron = false, isExpanded = false }: SidebarNavItemProps) {
   const content = (
     <>
       <Icon className="w-5 h-5" />
       <span className="text-sm font-medium">{label}</span>
       {isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
+      {hasChevron && !isActive && (
+        isExpanded ?
+          <ChevronDown className="w-4 h-4 ml-auto" /> :
+          <ChevronRight className="w-4 h-4 ml-auto" />
+      )}
     </>
   );
 

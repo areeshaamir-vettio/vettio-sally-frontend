@@ -151,7 +151,7 @@ export function JobsContent() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="text-lg font-semibold text-gray-900">
-                              {getJobDisplayTitle(job)}
+                              {job.title}
                             </h3>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColorClass(job.priority)}`}>
                               {job.priority}
@@ -163,7 +163,7 @@ export function JobsContent() {
                               {job.status}
                             </span>
                             <span>•</span>
-                            <span>{job.workflow_state || 'No workflow'}</span>
+                            <span>{job.location_text|| 'No workflow'}</span>
                             <span>•</span>
                             <span>{job.application_count} applications</span>
                           </div>
@@ -189,9 +189,9 @@ export function JobsContent() {
                           )}
 
                           <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span>Created {getRelativeTime(job.created_at)}</span>
+                            {/* <span>Created {getRelativeTime(job.created_at)}</span>
                             <span>•</span>
-                            <span>{job.view_count} views</span>
+                            <span>{job.view_count} views</span> */}
                             {job.published_at && (
                               <>
                                 <span>•</span>

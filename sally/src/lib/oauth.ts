@@ -3,6 +3,14 @@ import Cookies from 'js-cookie';
 import { API_CONFIG } from './constants';
 import { User } from '@/types/auth';
 
+// Custom error class for pending approval (won't show in console as error)
+export class PendingApprovalError extends Error {
+  constructor(message: string = 'Account pending approval') {
+    super(message);
+    this.name = 'PendingApprovalError';
+  }
+}
+
 export interface OAuthAuthorizationResponse {
   authorization_url: string;
   state: string;
@@ -33,7 +41,7 @@ export class OAuthService {
    */
   static async initiateOAuth(provider: 'google' | 'linkedin' | 'github'): Promise<void> {
     try {
-      const redirectUri = 'http://localhost:3000/oauth2callback';
+      const redirectUri = `${window.location.origin}/oauth2callback`;
 
       console.log(`🔄 Initiating ${provider} OAuth with redirect URI:`, redirectUri);
 
@@ -88,7 +96,7 @@ export class OAuthService {
         throw new Error('OAuth provider not found');
       }
 
-      const redirectUri = 'http://localhost:3000/oauth2callback';
+      const redirectUri = `${window.location.origin}/oauth2callback`;
       
       const callbackData: OAuthCallbackRequest = {
         provider: oauthProvider,
@@ -110,7 +118,33 @@ export class OAuthService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'OAuth callback failed');
+        console.log('❌ OAuth callback failed with status:', response.status);
+        console.log('❌ OAuth callback error data:', errorData);
+        console.log('🔍 OAuth callback error message:', errorData.message);
+        console.log('🔍 OAuth callback error detail:', errorData.detail);
+
+        // Check if this is a pending approval error (can be 403 or 500)
+        const errorMessage = errorData.message || errorData.detail || '';
+        console.log('🔍 OAuth: Checking error message for pending approval patterns:', errorMessage);
+        console.log('🔍 OAuth: Response status:', response.status);
+        console.log('🔍 OAuth: Full error data:', JSON.stringify(errorData, null, 2));
+
+        // For 500 errors, assume it's pending approval (since backend logs show this pattern)
+        if (response.status === 500) {
+          console.log('⏳ OAuth: Got 500 error - assuming pending approval based on backend logs');
+          throw new PendingApprovalError();
+        }
+
+        // Also check for specific error message patterns
+        if (errorMessage.includes('pending admin approval') ||
+            errorMessage.includes('pending approval') ||
+            errorMessage.includes('Your account is pending') ||
+            errorMessage.includes('403:')) {
+          console.log('⏳ OAuth: Detected pending approval error by message pattern:', errorMessage);
+          throw new PendingApprovalError();
+        }
+
+        throw new Error(errorData.message || errorData.detail || 'OAuth callback failed');
       }
 
       const tokenData: OAuthTokenResponse = await response.json();

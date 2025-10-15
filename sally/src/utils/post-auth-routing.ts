@@ -25,7 +25,7 @@ export async function getPostAuthRedirectPath(retryCount = 0): Promise<string> {
 
     // Add a delay to ensure token is properly stored and available
     // Longer delay on first attempt, shorter on retries
-    const delay = retryCount === 0 ? 300 : (100 + (retryCount * 200));
+    const delay = retryCount === 0 ? 500 : (200 + (retryCount * 300));
     await new Promise(resolve => setTimeout(resolve, delay));
     console.log(`⏳ Waited ${delay}ms for token to be ready`);
 
@@ -50,11 +50,25 @@ export async function getPostAuthRedirectPath(retryCount = 0): Promise<string> {
   } catch (error) {
     console.error('❌ Error checking jobs for post-auth routing:', error);
 
+    // Check if this is a pending approval error
+    const isPendingApproval = error instanceof Error && (
+      error.message.includes('Account pending approval') ||
+      error.message.includes('pending admin approval') ||
+      error.message.includes('pending approval')
+    );
+
+    if (isPendingApproval) {
+      console.log('⏳ Post-auth routing: Account pending approval detected, redirecting to pending approval page');
+      return '/pending-approval';
+    }
+
     // Check if it's an authentication error and we can retry
     const isAuthError = error instanceof Error && (
       error.message.includes('401') ||
       error.message.includes('Authentication failed') ||
-      error.message.includes('Token refresh failed')
+      error.message.includes('Token refresh failed') ||
+      error.message.includes('Session not found') ||
+      error.message.includes('Session expired')
     );
 
     if (isAuthError && retryCount < maxRetries) {

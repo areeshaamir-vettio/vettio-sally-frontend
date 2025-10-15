@@ -41,19 +41,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
       });
 
-      console.log('🔄 AuthContext.login: Starting post-auth routing...');
-      // Handle post-auth routing based on jobs
+      console.log('🔄 AuthContext.login: Checking user approval status...');
+      // First, check if user is approved by calling /me endpoint
       try {
+        const token = AuthService.getAccessToken();
+        const fullUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.ME}`;
+        console.log('📡 AuthContext.login: Checking approval status at:', fullUrl);
+
+        const meResponse = await fetch(fullUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+        });
+
+        console.log('📡 AuthContext.login: /me response status:', meResponse.status);
+
+        if (meResponse.status === 403) {
+          console.log('⏳ AuthContext.login: Got 403 from /me endpoint - account pending approval');
+          router.push('/pending-approval');
+          return;
+        }
+
+        if (!meResponse.ok) {
+          console.log('⚠️ AuthContext.login: /me endpoint failed with status:', meResponse.status);
+          // For other errors, proceed with normal routing as fallback
+        }
+
+        // If /me endpoint succeeds, user is approved, proceed with normal routing
+        console.log('✅ AuthContext.login: User is approved, proceeding with post-auth routing...');
+
+        // Add a small delay to ensure auth state is fully settled before routing
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
         console.log('🔄 AuthContext.login: Calling getPostAuthRedirectPath...');
         const redirectPath = await getPostAuthRedirectPath();
         console.log('🔄 AuthContext.login: Redirecting to:', redirectPath);
         router.push(redirectPath);
         console.log('✅ AuthContext.login: Router.push called successfully');
+
       } catch (routingError) {
         console.error('❌ AuthContext.login: Post-auth routing failed:', routingError);
-        console.log('🔄 AuthContext.login: Falling back to /get-started');
-        router.push('/get-started');
+
+        // Check if this is a pending approval error
+        if (routingError instanceof Error && (
+          routingError.message.includes('Account pending approval') ||
+          routingError.message.includes('pending admin approval') ||
+          routingError.message.includes('pending approval')
+        )) {
+          console.log('⏳ AuthContext.login: Account pending approval detected, redirecting to pending approval page');
+          router.push('/pending-approval');
+        } else {
+          console.log('🔄 AuthContext.login: Falling back to /get-started');
+          router.push('/get-started');
+        }
       }
     } catch (error) {
       console.error('❌ AuthContext.login: Login failed:', error);
@@ -94,15 +136,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isLoading: false,
           });
 
-          // Handle post-auth routing based on jobs
+          console.log('🔄 AuthContext.register: Checking user approval status...');
+          // First, check if user is approved by calling /me endpoint
           try {
+            const token = AuthService.getAccessToken();
+            const fullUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.ME}`;
+            console.log('📡 AuthContext.register: Checking approval status at:', fullUrl);
+
+            const meResponse = await fetch(fullUrl, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+            });
+
+            console.log('📡 AuthContext.register: /me response status:', meResponse.status);
+
+            if (meResponse.status === 403) {
+              console.log('⏳ AuthContext.register: Got 403 from /me endpoint - account pending approval');
+              router.push('/pending-approval');
+              return;
+            }
+
+            if (!meResponse.ok) {
+              console.log('⚠️ AuthContext.register: /me endpoint failed with status:', meResponse.status);
+              // For other errors, proceed with normal routing as fallback
+            }
+
+            // If /me endpoint succeeds, user is approved, proceed with normal routing
+            console.log('✅ AuthContext.register: User is approved, proceeding with post-auth routing...');
+
+            // Add a small delay to ensure auth state is fully settled before routing
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
             const redirectPath = await getPostAuthRedirectPath();
             console.log('🔄 Register - Redirecting to:', redirectPath);
             router.push(redirectPath);
+
           } catch (routingError) {
             console.error('❌ Post-auth routing failed:', routingError);
-            router.push('/get-started');
+
+            // Check if this is a pending approval error
+            if (routingError instanceof Error && (
+              routingError.message.includes('Account pending approval') ||
+              routingError.message.includes('pending admin approval') ||
+              routingError.message.includes('pending approval')
+            )) {
+              console.log('⏳ AuthContext.register: Account pending approval detected, redirecting to pending approval page');
+              router.push('/pending-approval');
+            } else {
+              router.push('/get-started');
+            }
           }
         } catch (loginError) {
           console.error('❌ AuthContext.register: Auto-login failed:', loginError);
@@ -139,6 +224,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Set loading state to prevent flash of content during logout
+    setState(prev => ({ ...prev, isLoading: true }));
+
     AuthService.logout();
 
     setState({
@@ -146,7 +234,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: false,
       isLoading: false,
     });
-    // Navigate to home page after logout
+
+    // Navigate to landing page after logout
     router.push('/');
   };
 

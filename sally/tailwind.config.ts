@@ -13,6 +13,12 @@ const config: Config = {
         success: "var(--color-success)",
         automation: "var(--color-automation)",
       },
+      fontFamily: {
+        'inter': ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        'sans': ['var(--font-inter)', 'system-ui', 'sans-serif'], // Default to Inter
+        'geist-sans': ['var(--font-geist-sans)', 'system-ui', 'sans-serif'], // Keep Geist available
+        'mono': ['var(--font-geist-mono)', 'monospace'],
+      },
     },
   },
   plugins: [],

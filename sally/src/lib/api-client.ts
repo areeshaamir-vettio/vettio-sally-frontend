@@ -11,7 +11,12 @@ import {
   RefreshTokenRequest,
   RefreshTokenResponse
 } from '@/types/auth';
-import { CreateRoleRequest, Role } from '@/types/roles'; 
+import { CreateRoleRequest, Role } from '@/types/roles';
+import {
+  RoleCandidatesResponse,
+  RoleCandidatesOptions,
+  CandidatesApiError
+} from '@/types/candidates';
 import { API_CONFIG, API_ENDPOINTS } from './constants';
 import { AuthService, TokenManager, AuthUtils } from './auth';
 import { ErrorHandler, ApiError } from './errors';
@@ -315,6 +320,56 @@ class ApiClient {
       return response;
     } catch (error) {
       console.error('❌ Failed to fetch roles list:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all candidates for a specific role
+   * @param roleId - The unique identifier of the role
+   * @param options - Query options for filtering and pagination
+   * @returns Promise<RoleCandidatesResponse> Role candidates data
+   * @throws Error if request fails
+   */
+  async getRoleCandidates(roleId: string, options: RoleCandidatesOptions = {}): Promise<RoleCandidatesResponse> {
+    console.log('🚀 API CLIENT: getRoleCandidates called');
+    console.log('🔍 API CLIENT: Role ID:', roleId);
+    console.log('🔍 API CLIENT: Options:', options);
+
+    try {
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (options.limit !== undefined) {
+        params.append('limit', options.limit.toString());
+      }
+
+      const endpoint = API_ENDPOINTS.SOURCING.ROLE_CANDIDATES(roleId);
+      const url = params.toString() ? `${endpoint}?${params}` : endpoint;
+
+      console.log('🌐 API CLIENT: Full URL being called:', url);
+      console.log('🌐 API CLIENT: Endpoint from constants:', endpoint);
+      console.log('🌐 API CLIENT: Query params:', params.toString());
+
+      console.log('📡 API CLIENT: Making HTTP request...');
+      const response = await this.request<RoleCandidatesResponse>(url, {
+        method: 'GET',
+      });
+
+      console.log('📦 API CLIENT: Raw response received:', response);
+      console.log('✅ API CLIENT: Role candidates fetched successfully:', {
+        roleId,
+        candidateCount: response.candidates?.length || 0,
+        totalCount: response.total_count,
+        hasMore: response.metadata?.has_more,
+        responseKeys: Object.keys(response)
+      });
+
+      return response;
+    } catch (error) {
+      console.error('❌ API CLIENT: Failed to fetch role candidates for roleId:', roleId);
+      console.error('❌ API CLIENT: Error details:', error);
+      console.error('❌ API CLIENT: Error type:', typeof error);
+      console.error('❌ API CLIENT: Error message:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }

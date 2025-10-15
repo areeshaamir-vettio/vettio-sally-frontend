@@ -70,16 +70,74 @@ export default function OAuthCallbackPage() {
           message: 'Authentication successful!'
         });
 
-        // Check if user has jobs and redirect accordingly
-        setTimeout(async () => {
-          console.log('🔄 OAuth Callback - Checking jobs for routing...');
-          const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
-          const redirectPath = await getPostAuthRedirectPath();
-          console.log('🔄 OAuth Callback - About to redirect to:', redirectPath);
-          router.push(redirectPath);
-        }, 2000);
+        // Check approval status immediately (no delay)
+        (async () => {
+          try {
+            console.log('🔄 OAuth Callback - Checking user approval status...');
+            const { AuthService } = await import('@/lib/auth');
+            const { API_CONFIG, API_ENDPOINTS } = await import('@/lib/constants');
+
+            const token = AuthService.getAccessToken();
+            const fullUrl = `${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.ME}`;
+            console.log('📡 OAuth Callback: Checking approval status at:', fullUrl);
+
+            const meResponse = await fetch(fullUrl, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+            });
+
+            console.log('📡 OAuth Callback: /me response status:', meResponse.status);
+
+            if (meResponse.status === 403) {
+              console.log('⏳ OAuth Callback: Got 403 from /me endpoint - account pending approval');
+              router.push('/pending-approval');
+              return;
+            }
+
+            if (!meResponse.ok) {
+              console.log('⚠️ OAuth Callback: /me endpoint failed with status:', meResponse.status);
+              // For other errors, proceed with normal routing as fallback
+            }
+
+            // If /me endpoint succeeds, user is approved, proceed with normal routing
+            console.log('✅ OAuth Callback: User is approved, proceeding with post-auth routing...');
+            const { getPostAuthRedirectPath } = await import('@/utils/post-auth-routing');
+            const redirectPath = await getPostAuthRedirectPath();
+            console.log('🔄 OAuth Callback - About to redirect to:', redirectPath);
+            router.push(redirectPath);
+          } catch (routingError) {
+            console.error('❌ OAuth Callback - Post-auth routing failed:', routingError);
+            // Default to get-started if routing fails
+            router.push('/get-started');
+          }
+        })();
 
       } catch (error) {
+        // Import the PendingApprovalError class
+        const { PendingApprovalError } = await import('@/lib/oauth');
+
+        // Check if this is a pending approval error (don't log as error)
+        if (error instanceof PendingApprovalError ||
+            (error instanceof Error && (
+              error.message.includes('Account pending approval') ||
+              error.message.includes('pending admin approval') ||
+              error.message.includes('pending approval') ||
+              error.message.includes('Your account is pending')
+            ))) {
+          console.log('⏳ OAuth Callback: Account pending approval detected');
+          setState({
+            status: 'loading',
+            message: 'Account pending approval. Redirecting...'
+          });
+
+          // Immediate redirect, no delay
+          router.push('/pending-approval');
+          return;
+        }
+
+        // Only log actual errors
         console.error('OAuth callback error:', error);
         setState({
           status: 'error',
