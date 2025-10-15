@@ -131,7 +131,19 @@ export class JobsService {
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      console.log('🔍 JobsService: Error response data:', errorData);
+
+      // Check for specific pending approval error - check both message and detail fields
+      if (response.status === 403) {
+        const errorMessage = errorData.message || errorData.detail || '';
+        if (errorMessage.includes('Account pending approval') ||
+            errorMessage.includes('pending approval')) {
+          console.log('⏳ JobsService: Detected pending approval error:', errorMessage);
+          throw new Error('Account pending approval');
+        }
+      }
+
+      throw new Error(errorData.message || errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
     }
     return response.json();
   }
@@ -274,6 +286,13 @@ export class JobsService {
             console.log('ℹ️ Defaulting to hasJobs = false, user will be redirected to /get-started');
             return false;
           }
+        }
+
+        // Check if this is a pending approval error
+        if (apiError instanceof Error && apiError.message.includes('Account pending approval')) {
+          console.log('⏳ JobsService: Account pending approval detected during hasJobs check');
+          // Re-throw the specific error that can be caught by post-auth routing
+          throw apiError;
         }
 
         // For other errors, log and return false

@@ -51,9 +51,18 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       console.log('📋 JobsContext: Job titles:', jobsData.map(job => job.sections?.basic_information?.title || 'Untitled').slice(0, 10));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs';
-      setError(errorMessage);
-      console.error('❌ JobsContext: Failed to fetch jobs:', err);
-      setHasJobs(false);
+
+      // Check if this is a 403 error (likely pending approval)
+      if (err instanceof Error && err.message.includes('403')) {
+        console.log('⏳ JobsContext: Got 403 error during fetchJobs - likely pending approval');
+        // Don't set this as an error state, just silently fail
+        setHasJobs(false);
+        setHasFetched(true); // Mark as fetched to prevent retries
+      } else {
+        setError(errorMessage);
+        console.error('❌ JobsContext: Failed to fetch jobs:', err);
+        setHasJobs(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -71,10 +80,19 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       return userHasJobs;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check jobs';
-      setError(errorMessage);
-      console.error('❌ JobsContext: Failed to check if user has jobs:', err);
-      setHasJobs(false);
-      return false;
+
+      // Check if this is a 403 error (likely pending approval)
+      if (err instanceof Error && err.message.includes('403')) {
+        console.log('⏳ JobsContext: Got 403 error during checkHasJobs - likely pending approval');
+        // Don't set this as an error state, just return false
+        setHasJobs(false);
+        return false;
+      } else {
+        setError(errorMessage);
+        console.error('❌ JobsContext: Failed to check if user has jobs:', err);
+        setHasJobs(false);
+        return false;
+      }
     } finally {
       setLoading(false);
     }
@@ -104,6 +122,12 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authToken) {
       console.log('⏭️ JobsContext: No auth token, skipping auto-fetch');
+      return;
+    }
+
+    // Don't auto-fetch if we're on the pending approval page
+    if (typeof window !== 'undefined' && window.location.pathname === '/pending-approval') {
+      console.log('⏭️ JobsContext: On pending approval page, skipping auto-fetch');
       return;
     }
 

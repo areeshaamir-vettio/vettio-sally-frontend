@@ -50,6 +50,18 @@ export async function getPostAuthRedirectPath(retryCount = 0): Promise<string> {
   } catch (error) {
     console.error('❌ Error checking jobs for post-auth routing:', error);
 
+    // Check if this is a pending approval error
+    const isPendingApproval = error instanceof Error && (
+      error.message.includes('Account pending approval') ||
+      error.message.includes('pending admin approval') ||
+      error.message.includes('pending approval')
+    );
+
+    if (isPendingApproval) {
+      console.log('⏳ Post-auth routing: Account pending approval detected, redirecting to pending approval page');
+      return '/pending-approval';
+    }
+
     // Check if it's an authentication error and we can retry
     const isAuthError = error instanceof Error && (
       error.message.includes('401') ||
