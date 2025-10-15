@@ -3,7 +3,7 @@
 import React from 'react';
 import { MapPin, Eye, ExternalLink, GraduationCap, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ProfileAvatar } from '@/components/ui/profile-avatar';
+// import { ProfileAvatar } from '@/components/ui/profile-avatar';
 
 interface CandidateCardProps {
   candidate: {
@@ -33,11 +33,11 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
 
         {/* Header - Avatar and Name */}
         <div className="flex items-center gap-3 mb-3">
-          <ProfileAvatar
+          {/* <ProfileAvatar
             src={candidate.avatar}
             alt={candidate.name}
             size="md"
-          />
+          /> */}
           <div>
             <h3 className="font-semibold text-[#1D2025] text-base leading-tight">
               {candidate.name}
