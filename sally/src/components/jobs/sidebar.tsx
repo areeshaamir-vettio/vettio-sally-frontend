@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -33,7 +33,7 @@ interface SidebarNavItemProps {
 
 export function JobsSidebar() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
-  const { jobs, loading: jobsLoading, error: jobsError } = useJobsContext();
+  const { jobs, loading: jobsLoading, error: jobsError, ensureJobsLoaded } = useJobsContext();
 
   // const { jobs, loading: jobsLoading, error: jobsError } = useJobs();
   const pathname = usePathname();
@@ -47,6 +47,12 @@ export function JobsSidebar() {
       console.error('Sign out error:', error);
     }
   };
+
+  // Ensure jobs are loaded when sidebar is rendered
+  useEffect(() => {
+    // Try to load jobs regardless of auth state for now (to debug the issue)
+    ensureJobsLoaded();
+  }, [ensureJobsLoaded]);
 
   // Debug logging
   console.log('JobsSidebar - Auth State:', { user, isAuthenticated, isLoading });

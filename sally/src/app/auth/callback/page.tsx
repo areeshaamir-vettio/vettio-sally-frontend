@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { OAuthService } from '@/lib/oauth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,14 +14,26 @@ export default function OAuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithOAuth } = useAuth();
-  
+
   const [state, setState] = useState<CallbackState>({
     status: 'loading',
     message: 'Processing authentication...'
   });
 
+  // Prevent multiple callback processing
+  const hasProcessedRef = useRef(false);
+  const isRedirectingRef = useRef(false);
+
   useEffect(() => {
     const handleOAuthCallback = async () => {
+      // Prevent multiple processing of the same callback
+      if (hasProcessedRef.current || isRedirectingRef.current) {
+        console.log('🚫 OAuth Callback - Already processed or redirecting, skipping');
+        return;
+      }
+
+      hasProcessedRef.current = true;
+
       try {
         console.log('🔍 OAuth Callback - Current URL:', window.location.href);
         console.log('🔍 OAuth Callback - Search params:', searchParams.toString());
@@ -72,6 +84,14 @@ export default function OAuthCallbackPage() {
 
         // Check approval status immediately (no delay)
         (async () => {
+          // Prevent multiple redirects
+          if (isRedirectingRef.current) {
+            console.log('🚫 OAuth Callback - Already redirecting, skipping');
+            return;
+          }
+
+          isRedirectingRef.current = true;
+
           try {
             console.log('🔄 OAuth Callback - Checking user approval status...');
             const { AuthService } = await import('@/lib/auth');
@@ -108,6 +128,18 @@ export default function OAuthCallbackPage() {
             console.log('🔄 OAuth Callback - About to redirect to:', redirectPath);
             router.push(redirectPath);
           } catch (routingError) {
+            // Check if this is a pending approval error
+            if (routingError instanceof Error && (
+              routingError.message.includes('Account pending approval') ||
+              routingError.message.includes('pending approval') ||
+              routingError.message.includes('pending admin approval')
+            )) {
+              console.log('⏳ OAuth Callback: Account pending approval detected during routing - redirecting');
+              isRedirectingRef.current = true;
+              router.push('/pending-approval');
+              return; // Don't log as error, just redirect
+            }
+
             console.error('❌ OAuth Callback - Post-auth routing failed:', routingError);
             // Default to get-started if routing fails
             router.push('/get-started');
@@ -115,6 +147,10 @@ export default function OAuthCallbackPage() {
         })();
 
       } catch (error) {
+        // Reset flags on error
+        hasProcessedRef.current = false;
+        isRedirectingRef.current = false;
+
         // Import the PendingApprovalError class
         const { PendingApprovalError } = await import('@/lib/oauth');
 
@@ -132,6 +168,7 @@ export default function OAuthCallbackPage() {
             message: 'Account pending approval. Redirecting...'
           });
 
+          isRedirectingRef.current = true;
           // Immediate redirect, no delay
           router.push('/pending-approval');
           return;
@@ -146,13 +183,14 @@ export default function OAuthCallbackPage() {
 
         // Redirect to login page after error
         setTimeout(() => {
+          isRedirectingRef.current = true;
           router.push('/login?error=oauth_failed');
         }, 3000);
       }
     };
 
-    // Only run if we have search params
-    if (searchParams.toString()) {
+    // Only run if we have search params and haven't processed yet
+    if (searchParams.toString() && !hasProcessedRef.current) {
       handleOAuthCallback();
     }
   }, [searchParams, router, loginWithOAuth]);

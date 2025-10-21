@@ -136,11 +136,13 @@ export class JobsService {
       // Check for specific pending approval error - check both message and detail fields
       if (response.status === 403) {
         const errorMessage = errorData.message || errorData.detail || '';
-        if (errorMessage.includes('Account pending approval') ||
-            errorMessage.includes('pending approval')) {
-          console.log('⏳ JobsService: Detected pending approval error:', errorMessage);
-          throw new Error('Account pending approval');
-        }
+        console.log('⏳ JobsService: Got 403 error - treating as pending approval (will be handled by caller):', errorMessage);
+
+        // Create a special error that indicates pending approval but won't show in console
+        const pendingError = new Error('PENDING_APPROVAL_REDIRECT');
+        (pendingError as any).isPendingApproval = true;
+        (pendingError as any).shouldRedirect = true;
+        throw pendingError;
       }
 
       throw new Error(errorData.message || errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
@@ -197,12 +199,34 @@ export class JobsService {
           }
 
           await AuthService.refreshToken();
-          console.log('✅ JobsService: Token refreshed, retrying listJobs...');
+          console.log('✅ JobsService: Token refreshed, waiting for session to be ready...');
+
+          // Add a delay to ensure backend session is fully established
+          await new Promise(resolve => setTimeout(resolve, 250));
+          console.log('✅ JobsService: Session ready, retrying listJobs...');
+
           const retryResponse = await fetch(url, {
             method: 'GET',
             headers: this.getHeaders(),
             signal: controller.signal,
           });
+
+          // If we still get 401 after token refresh, try one more time with additional delay
+          if (retryResponse.status === 401) {
+            console.log('⚠️ JobsService: Still getting 401 after token refresh, trying once more...');
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            const finalRetryResponse = await fetch(url, {
+              method: 'GET',
+              headers: this.getHeaders(),
+              signal: controller.signal,
+            });
+
+            const finalResult = this.handleResponse<Job[]>(finalRetryResponse);
+            console.log('📊 Jobs fetched after final retry:', (await finalResult).length);
+            return finalResult;
+          }
+
           const result = this.handleResponse<Job[]>(retryResponse);
           console.log('📊 Jobs fetched after retry:', (await result).length);
           return result;
@@ -276,7 +300,12 @@ export class JobsService {
             }
 
             await AuthService.refreshToken();
-            console.log('✅ JobsService: Token refreshed, retrying hasJobs...');
+            console.log('✅ JobsService: Token refreshed, waiting for session to be ready...');
+
+            // Add a delay to ensure backend session is fully established
+            await new Promise(resolve => setTimeout(resolve, 250));
+            console.log('✅ JobsService: Session ready, retrying hasJobs...');
+
             const jobs = await this.listJobs({ limit: 50, clear_cache: true });
             const hasJobs = jobs.length > 0;
             console.log(`✅ User has ${jobs.length} jobs after retry (hasJobs: ${hasJobs})`);
@@ -289,9 +318,16 @@ export class JobsService {
         }
 
         // Check if this is a pending approval error
-        if (apiError instanceof Error && apiError.message.includes('Account pending approval')) {
-          console.log('⏳ JobsService: Account pending approval detected during hasJobs check');
-          // Re-throw the specific error that can be caught by post-auth routing
+        if (apiError instanceof Error && (
+          apiError.message.includes('PENDING_APPROVAL_REDIRECT') ||
+          apiError.message.includes('Account pending approval') ||
+          apiError.message.includes('pending approval') ||
+          apiError.message.includes('pending admin approval') ||
+          (apiError as any).isPendingApproval === true
+        )) {
+          console.log('⏳ JobsService: Account pending approval detected during hasJobs check - re-throwing for caller to handle');
+
+          // Re-throw the special error so the caller can handle the redirect
           throw apiError;
         }
 
@@ -377,6 +413,13 @@ export class JobsService {
    * @returns Promise<Job> Job details
    */
   async getJob(id: string): Promise<Job> {
+    // Check if we have a valid auth token before making the request
+    const token = AuthService.getAccessToken();
+    if (!token) {
+      console.log('⏭️ JobsService.getJob: No auth token available, skipping API call');
+      throw new Error('Authentication required');
+    }
+
     const url = `${this.baseURL}${API_ENDPOINTS.INTAKE.GET(id)}`;
 
     console.log('🌐 Making API call to:', url);
@@ -441,7 +484,7 @@ export class JobsService {
   private transformIntakeResponseToJob(id: string, intakeResponse: IntakeRoleResponse): Job {
     return {
       id,
-      organization_id: intakeResponse.role?.organization_id || '',
+      organization_id: '', // Will be set by backend based on user's organization
       status: 'draft', // Default status
       title: intakeResponse.role?.basic_information?.title || '',
       department: null,

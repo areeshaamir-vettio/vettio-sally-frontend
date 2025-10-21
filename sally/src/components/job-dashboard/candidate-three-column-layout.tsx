@@ -22,7 +22,8 @@ export function CandidateThreeColumnLayout({ roleId, onCandidateSelect }: Candid
   console.log('🎯 CandidateThreeColumnLayout: Component rendered with roleId:', roleId);
 
   // Use a stable options object to prevent infinite re-renders
-  const candidatesOptions = React.useMemo(() => ({ limit: 100 }), []);
+  // Start with very small limit for fastest initial load
+  const candidatesOptions = React.useMemo(() => ({ limit: 12 }), []);
   const { candidates, loading, error, totalCount, refetch } = useRoleCandidates(roleId, candidatesOptions);
 
   console.log('📊 CandidateThreeColumnLayout: Hook state:', {
@@ -240,14 +241,7 @@ function CandidateCard({ candidate, roleId, onCandidateSelect }: CandidateCardPr
   // Get profile picture URL with fallbacks
   const profilePictureUrl = candidate.personal_info?.profile_picture_url?.trim() || null;
 
-  // Get additional info with fallbacks
-  const candidateLocation = candidate.address ||
-                           candidate.professional_info?.current_company ||
-                           'Location not specified';
-
-  const candidateExperience = candidate.professional_info?.years_experience ||
-                             candidate.professional_info?.seniority_level ||
-                             'Experience level not specified';
+  // Additional info available but not currently displayed in card view
 
   // Generate match score
   const matchScore = generateMatchScore(candidate.id);

@@ -38,12 +38,20 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
   const candidatesOptions = React.useMemo(() => ({ limit: 100 }), []);
   const { candidates, totalCount } = useRoleCandidates(effectiveJobId, candidatesOptions);
 
-  // Handle candidate selection
+  // Handle candidate selection with lazy loading
   const handleCandidateSelect = (candidate: Candidate) => {
-    // Enhance candidate with mock data for detail view
-    const enhancedCandidate = enhanceCandidateWithMockData(candidate);
-    setSelectedCandidate(enhancedCandidate);
+    console.log('🎯 JobDashboardContent: Candidate selected, loading detail view...');
+
+    // Set basic candidate first to show loading state
+    setSelectedCandidate(candidate);
     setIsPanelOpen(true);
+
+    // Enhance candidate with mock data asynchronously (simulating API call)
+    setTimeout(() => {
+      const enhancedCandidate = enhanceCandidateWithMockData(candidate);
+      setSelectedCandidate(enhancedCandidate);
+      console.log('✅ JobDashboardContent: Enhanced candidate data loaded');
+    }, 100); // Small delay to simulate data fetching
   };
 
   // Handle panel close
@@ -104,7 +112,6 @@ export function JobDashboardContent({ job }: JobDashboardContentProps) {
   const rejectedCount = safeCandidates.filter((_, index) => index % 3 === 2).length;
   // Get job title from the job data or fallback
   const jobTitle = job?.sections?.basic_information?.title || 'Job Role';
-  const jobLocation = job?.sections?.basic_information?.location_text || 'Location TBD';
   return (
     <div className={`flex-1 flex flex-col bg-[#F9FAFA] overflow-hidden transition-all duration-300 ${isPanelOpen ? 'mr-[373px]' : ''}`}>
       {/* Top Navbar */}

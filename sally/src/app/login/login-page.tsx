@@ -58,6 +58,18 @@ export default function LoginPage() {
       console.log('🔄 Login - About to redirect to:', redirectPath);
       router.push(redirectPath);
     } catch (error: any) {
+      // Check if this is a pending approval error
+      if (error?.message?.includes('PENDING_APPROVAL_REDIRECT') ||
+          error?.message?.includes('Account pending approval') ||
+          error?.message?.includes('pending approval') ||
+          error?.message?.includes('pending admin approval') ||
+          error?.isPendingApproval === true ||
+          error?.shouldRedirect === true) {
+        console.log('⏳ Login: Account pending approval detected - redirecting');
+        router.push('/pending-approval');
+        return; // Don't show error message, just redirect
+      }
+
       console.error('Login failed:', error);
       setError('Invalid email or password. Please try again.');
     } finally {

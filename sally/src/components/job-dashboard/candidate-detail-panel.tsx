@@ -14,6 +14,9 @@ interface CandidateDetailPanelProps {
 }
 
 export function CandidateDetailPanel({ job, candidate, onClose }: CandidateDetailPanelProps) {
+  // Check if this is enhanced candidate data (has education/skills) or basic data
+  const isEnhancedData = candidate.education && candidate.education.length > 0;
+
   // Safely extract candidate information with fallbacks
   const candidateName = candidate.personal_info?.full_name?.trim() ||
                        `${candidate.personal_info?.first_name || ''} ${candidate.personal_info?.last_name || ''}`.trim() ||
@@ -122,11 +125,45 @@ export function CandidateDetailPanel({ job, candidate, onClose }: CandidateDetai
         {/* Experience Section */}
         <ExperienceSection experience={candidate.work_experience} />
 
-        {/* Education Section */}
-        <EducationSection education={candidate.education} />
+        {/* Education, Skills, and Certifications - Load on demand */}
+        {isEnhancedData ? (
+          <>
+            {/* Education Section */}
+            <EducationSection education={candidate.education} />
 
-        {/* Certifications Section */}
-        <CertificationsSection certifications={candidate.certifications} />
+            {/* Skills Section */}
+            <SkillsSection skills={candidate.skills} />
+
+            {/* Certifications Section */}
+            <CertificationsSection certifications={candidate.certifications} />
+          </>
+        ) : (
+          <div className="space-y-6">
+            {/* Loading skeleton for enhanced data */}
+            <div className="animate-pulse">
+              <div className="border-b border-[#E5E7EB] mb-6"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
+              <div className="space-y-2">
+                <div className="h-3 bg-gray-200 rounded w-full"></div>
+                <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            </div>
+            <div className="animate-pulse">
+              <div className="border-b border-[#E5E7EB] mb-6"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="flex flex-wrap gap-2">
+                <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                <div className="h-6 bg-gray-200 rounded-full w-14"></div>
+              </div>
+            </div>
+            <div className="animate-pulse">
+              <div className="border-b border-[#E5E7EB] mb-6"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
+              <div className="h-16 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -384,6 +421,65 @@ function EducationSection({ education }: { education?: CandidateEducation[] | an
               <Calendar className="w-3 h-3" />
               <span>{edu.duration}</span>
             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Skills Section Component
+function SkillsSection({ skills }: { skills?: any[] }) {
+  // Process actual skills data or provide fallback
+  let skillsData: Array<{ name: string; proficiency_level: string }> = [];
+
+  if (skills && Array.isArray(skills) && skills.length > 0) {
+    skillsData = skills.map((skill: any) => ({
+      name: skill.name || 'Unknown Skill',
+      proficiency_level: skill.proficiency_level || 'beginner'
+    }));
+  } else {
+    // Fallback skills data
+    skillsData = [
+      { name: 'React', proficiency_level: 'advanced' },
+      { name: 'TypeScript', proficiency_level: 'intermediate' },
+      { name: 'Node.js', proficiency_level: 'intermediate' },
+      { name: 'JavaScript', proficiency_level: 'advanced' },
+      { name: 'CSS', proficiency_level: 'intermediate' },
+      { name: 'HTML', proficiency_level: 'advanced' },
+      { name: 'Git', proficiency_level: 'intermediate' },
+      { name: 'REST APIs', proficiency_level: 'intermediate' }
+    ];
+  }
+
+  // Function to get color based on proficiency level
+  const getProficiencyColor = (level: string) => {
+    switch (level.toLowerCase()) {
+      case 'advanced':
+      case 'expert':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'intermediate':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'beginner':
+      case 'basic':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  return (
+    <div>
+      <div className="border-b border-[#E5E7EB] mb-6"></div>
+      <h3 className="text-lg font-semibold text-[#111827] mb-4">Skills</h3>
+      <div className="flex flex-wrap gap-2">
+        {skillsData.map((skill, index) => (
+          <div
+            key={index}
+            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getProficiencyColor(skill.proficiency_level)}`}
+          >
+            <span className="mr-1">{skill.name}</span>
+            {/* <span className="text-xs opacity-75">({skill.proficiency_level})</span> */}
           </div>
         ))}
       </div>

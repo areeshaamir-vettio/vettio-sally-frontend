@@ -5,10 +5,14 @@ import { useParams } from 'next/navigation';
 import { JobsSidebar } from '@/components/jobs/sidebar';
 import { JobDashboardContent } from '@/components/job-dashboard/content';
 import { jobsService, Job } from '@/services/jobs.service';
+import { useJobsContext } from '@/contexts/JobsContext';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function JobSpecificDashboardPage() {
   const params = useParams();
   const jobId = params.jobId as string;
+  const { user, isAuthenticated } = useAuth();
+  const { jobs, loading: jobsLoading, ensureJobsLoaded } = useJobsContext();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,10 +21,31 @@ export default function JobSpecificDashboardPage() {
     const fetchJob = async () => {
       try {
         console.log('🔄 JobSpecificDashboardPage: Starting to fetch job with ID:', jobId);
+
+        // Don't fetch if user is not authenticated
+        if (!user || !user.id || !isAuthenticated) {
+          console.log('⏭️ JobSpecificDashboardPage: User not authenticated, skipping job fetch');
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         setError(null);
 
-        // Get the specific job by ID
+        // First, ensure jobs are loaded
+        await ensureJobsLoaded();
+
+        // Then try to find the job in the cached jobs list
+        const cachedJob = jobs.find(j => j.id === jobId);
+        if (cachedJob) {
+          console.log('⚡ JobSpecificDashboardPage: Using cached job data:', cachedJob);
+          setJob(cachedJob);
+          setLoading(false);
+          return;
+        }
+
+        // If not in cache, fetch from API
+        console.log('🌐 JobSpecificDashboardPage: Job not in cache, fetching from API');
         const jobData = await jobsService.getJob(jobId);
         setJob(jobData);
 
@@ -31,6 +56,14 @@ export default function JobSpecificDashboardPage() {
         console.log('🔍 JobSpecificDashboardPage: Job title:', jobData.sections?.basic_information?.title);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job';
+
+        // Handle 403 errors gracefully (likely during logout or unauthorized access)
+        if (err instanceof Error && (err.message.includes('403') || err.message.includes('Forbidden'))) {
+          console.log('⏳ JobSpecificDashboardPage: Got 403/Forbidden error - likely during logout or unauthorized access');
+          // Don't set error state for 403 during logout
+          return;
+        }
+
         setError(errorMessage);
         console.error('❌ JobSpecificDashboardPage: Failed to fetch job:', err);
       } finally {
@@ -39,22 +72,47 @@ export default function JobSpecificDashboardPage() {
     };
 
     console.log('🚀 JobSpecificDashboardPage: useEffect triggered with jobId:', jobId);
+    console.log('📋 JobSpecificDashboardPage: Available cached jobs:', jobs.length);
+
     if (jobId) {
       fetchJob();
     } else {
       console.log('⚠️ JobSpecificDashboardPage: No jobId provided');
     }
-  }, [jobId]);
+  }, [jobId, jobs, ensureJobsLoaded, user, isAuthenticated]);
 
-  if (loading) {
+  if (loading && !job) {
     return (
-      <div className="min-h-screen bg-[#F9FAFA]">
-        <div className="flex h-screen">
+      <div className="h-screen bg-[#F9FAFA] overflow-hidden">
+        <div className="flex h-full">
+          {/* Sidebar loads immediately */}
           <JobsSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading job dashboard...</p>
+
+          {/* Show skeleton while job data loads */}
+          <div className="flex-1 flex flex-col">
+            {/* Header skeleton */}
+            <div className="bg-white border-b border-[#E5E7EB] px-6 py-4">
+              <div className="animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              </div>
+            </div>
+
+            {/* Content skeleton */}
+            <div className="flex-1 p-6">
+              <div className="animate-pulse space-y-6">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="h-24 bg-gray-200 rounded"></div>
+                  <div className="h-24 bg-gray-200 rounded"></div>
+                  <div className="h-24 bg-gray-200 rounded"></div>
+                  <div className="h-24 bg-gray-200 rounded"></div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="h-64 bg-gray-200 rounded"></div>
+                  <div className="h-64 bg-gray-200 rounded"></div>
+                  <div className="h-64 bg-gray-200 rounded"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

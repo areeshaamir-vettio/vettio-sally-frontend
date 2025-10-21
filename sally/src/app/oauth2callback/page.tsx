@@ -126,10 +126,13 @@ export default function OAuth2CallbackPage() {
         // Check if this is a pending approval error (don't log as error)
         if (error instanceof PendingApprovalError ||
             (error instanceof Error && (
+              error.message.includes('PENDING_APPROVAL_REDIRECT') ||
               error.message.includes('Account pending approval') ||
               error.message.includes('pending admin approval') ||
               error.message.includes('pending approval') ||
-              error.message.includes('Your account is pending')
+              error.message.includes('Your account is pending') ||
+              (error as any).isPendingApproval === true ||
+              (error as any).shouldRedirect === true
             ))) {
           console.log('⏳ OAuth2 Callback: Account pending approval detected');
           setState({
