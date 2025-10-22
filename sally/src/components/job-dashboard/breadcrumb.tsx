@@ -15,13 +15,7 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ items }: BreadcrumbProps) {
   return (
-    <nav 
-      className="flex items-center"
-      style={{
-        width: '189px',
-        height: '24px'
-      }}
-    >
+    <nav className="flex items-center">
       <ol className="flex items-center space-x-2">
         {items.map((item, index) => (
           <li key={index} className="flex items-center">
@@ -31,15 +25,15 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
             {item.href && !item.isActive ? (
               <a
                 href={item.href}
-                className="text-sm text-[#6B7280] hover:text-[#1D2025] transition-colors"
+                className="text-sm text-[#6B7280] hover:text-[#1D2025] transition-colors whitespace-nowrap"
               >
                 {item.label}
               </a>
             ) : (
-              <span 
-                className={`text-sm ${
-                  item.isActive 
-                    ? 'text-[#1D2025] font-medium' 
+              <span
+                className={`text-sm whitespace-nowrap ${
+                  item.isActive
+                    ? 'text-[#1D2025] font-medium'
                     : 'text-[#6B7280]'
                 }`}
               >

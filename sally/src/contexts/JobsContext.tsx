@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { jobsService, Job, JobsListOptions } from '@/services/jobs.service';
 import { AuthService } from '@/lib/auth';
+import { useAuth } from '@/hooks/useAuth';
 
 interface JobsContextType {
   jobs: Job[];
@@ -12,11 +13,14 @@ interface JobsContextType {
   fetchJobs: (options?: JobsListOptions) => Promise<void>;
   checkHasJobs: () => Promise<boolean>;
   refetch: () => Promise<void>;
+  ensureJobsLoaded: () => Promise<void>;
+  clearCache: () => void;
 }
 
 const JobsContext = createContext<JobsContextType | undefined>(undefined);
 
 export function JobsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +29,17 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const [authToken, setAuthToken] = useState<string | null>(null);
 
   const fetchJobs = useCallback(async (customOptions?: JobsListOptions) => {
+    // Don't fetch if user is not authenticated
+    if (!user || !user.id) {
+      console.log('⏭️ JobsContext: fetchJobs - no authenticated user, skipping fetch');
+      return;
+    }
+
+    if (!authToken) {
+      console.log('⏭️ JobsContext: fetchJobs - no auth token, skipping fetch');
+      return;
+    }
+
     // Prevent duplicate fetches if already loading
     if (loading) {
       console.log('⏭️ JobsContext: Already fetching jobs, skipping duplicate request');
@@ -52,9 +67,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs';
 
-      // Check if this is a 403 error (likely pending approval)
-      if (err instanceof Error && err.message.includes('403')) {
-        console.log('⏳ JobsContext: Got 403 error during fetchJobs - likely pending approval');
+      // Check if this is a 403 error (likely pending approval or logout)
+      if (err instanceof Error && (err.message.includes('403') || err.message.includes('Forbidden'))) {
+        console.log('⏳ JobsContext: Got 403/Forbidden error during fetchJobs - likely pending approval or logout');
         // Don't set this as an error state, just silently fail
         setHasJobs(false);
         setHasFetched(true); // Mark as fetched to prevent retries
@@ -66,9 +81,20 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [loading]);
+  }, [loading, user, authToken]);
 
   const checkHasJobs = useCallback(async (): Promise<boolean> => {
+    // Don't check if user is not authenticated
+    if (!user || !user.id) {
+      console.log('⏭️ JobsContext: checkHasJobs - no authenticated user, returning false');
+      return false;
+    }
+
+    if (!authToken) {
+      console.log('⏭️ JobsContext: checkHasJobs - no auth token, returning false');
+      return false;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -81,9 +107,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check jobs';
 
-      // Check if this is a 403 error (likely pending approval)
-      if (err instanceof Error && err.message.includes('403')) {
-        console.log('⏳ JobsContext: Got 403 error during checkHasJobs - likely pending approval');
+      // Check if this is a 403 error (likely pending approval or logout)
+      if (err instanceof Error && (err.message.includes('403') || err.message.includes('Forbidden'))) {
+        console.log('⏳ JobsContext: Got 403/Forbidden error during checkHasJobs - likely pending approval or logout');
         // Don't set this as an error state, just return false
         setHasJobs(false);
         return false;
@@ -96,11 +122,54 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, authToken]);
 
   const refetch = useCallback(async () => {
     await fetchJobs();
   }, [fetchJobs]);
+
+  const ensureJobsLoaded = useCallback(async () => {
+    // Don't fetch if user is not authenticated
+    if (!user || !user.id) {
+      console.log('⏭️ JobsContext: ensureJobsLoaded - no authenticated user, skipping fetch');
+      return;
+    }
+
+    if (!authToken) {
+      console.log('⏭️ JobsContext: ensureJobsLoaded - no auth token, skipping fetch');
+      return;
+    }
+
+    if (!hasFetched && !loading) {
+      console.log('🔄 JobsContext: ensureJobsLoaded - fetching jobs on demand');
+      console.log('🔄 JobsContext: authToken available:', !!authToken);
+      await fetchJobs();
+    } else {
+      console.log('⏭️ JobsContext: ensureJobsLoaded - jobs already loaded or loading', { hasFetched, loading });
+    }
+  }, [hasFetched, loading, authToken, fetchJobs, user]);
+
+  const clearCache = useCallback(() => {
+    console.log('🧹 JobsContext: Clearing cache...');
+    setJobs([]);
+    setHasJobs(false);
+    setHasFetched(false);
+    setError(null);
+    setLoading(false);
+  }, []);
+
+  // Listen for cache clear events from AuthContext
+  useEffect(() => {
+    const handleClearCache = () => {
+      console.log('🧹 JobsContext: Received cache clear event from AuthContext');
+      clearCache();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth:clearCache', handleClearCache);
+      return () => window.removeEventListener('auth:clearCache', handleClearCache);
+    }
+  }, [clearCache]);
 
   // Monitor auth token changes and update state
   useEffect(() => {
@@ -137,6 +206,12 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Don't auto-fetch if we're on job dashboard page, but allow manual fetch
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/job-dashboard/')) {
+      console.log('⏭️ JobsContext: On job dashboard page, skipping auto-fetch but allowing manual fetch');
+      return;
+    }
+
     if (!hasFetched && !loading) {
       console.log('🚀 JobsContext: Auth token detected, auto-fetching jobs');
       fetchJobs();
@@ -153,6 +228,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         fetchJobs,
         checkHasJobs,
         refetch,
+        ensureJobsLoaded,
+        clearCache,
       }}
     >
       {children}

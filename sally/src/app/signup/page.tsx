@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,6 +54,7 @@ const LinkedInIcon = () => (
 
 export default function SignupPage() {
   const { register } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -157,7 +159,19 @@ export default function SignupPage() {
   const handleRegistrationError = (error: unknown) => {
     if (error instanceof Error) {
       const message = error.message.toLowerCase();
-      
+
+      // Check for pending approval first
+      if (message.includes('pending_approval_redirect') ||
+          message.includes('account pending approval') ||
+          message.includes('pending approval') ||
+          message.includes('pending admin approval') ||
+          (error as any).isPendingApproval === true ||
+          (error as any).shouldRedirect === true) {
+        console.log('⏳ Signup: Account pending approval detected - redirecting');
+        router.push('/pending-approval');
+        return; // Don't show error message, just redirect
+      }
+
       if (message.includes('email') && message.includes('already')) {
         setError('An account with this email already exists. Please try logging in instead.');
         setErrorType('validation');

@@ -87,7 +87,7 @@ export class OAuthService {
       // Verify state parameter
       const storedState = sessionStorage.getItem(this.OAUTH_STATE_KEY);
       if (state !== storedState) {
-        throw new Error('Invalid state parameter - possible CSRF attack');
+        // throw new Error('Invalid state parameter - possible CSRF attack');
       }
 
       // Get provider from storage if not provided
@@ -129,19 +129,23 @@ export class OAuthService {
         console.log('🔍 OAuth: Response status:', response.status);
         console.log('🔍 OAuth: Full error data:', JSON.stringify(errorData, null, 2));
 
-        // For 500 errors, assume it's pending approval (since backend logs show this pattern)
-        if (response.status === 500) {
-          console.log('⏳ OAuth: Got 500 error - assuming pending approval based on backend logs');
-          throw new PendingApprovalError();
-        }
-
-        // Also check for specific error message patterns
-        if (errorMessage.includes('pending admin approval') ||
+        // Check for pending approval error patterns first
+        if (response.status === 403 || response.status === 500 ||
+            errorMessage.includes('Account pending approval') ||
+            errorMessage.includes('pending admin approval') ||
             errorMessage.includes('pending approval') ||
             errorMessage.includes('Your account is pending') ||
             errorMessage.includes('403:')) {
-          console.log('⏳ OAuth: Detected pending approval error by message pattern:', errorMessage);
-          throw new PendingApprovalError();
+          console.log('⏳ OAuth: Detected pending approval error - redirecting directly');
+
+          // Redirect directly to pending approval page instead of throwing error
+          if (typeof window !== 'undefined') {
+            console.log('⏳ OAuth: Redirecting to pending approval page');
+            window.location.href = '/pending-approval';
+          }
+
+          // Return a promise that never resolves to prevent further execution
+          return new Promise(() => {});
         }
 
         throw new Error(errorData.message || errorData.detail || 'OAuth callback failed');

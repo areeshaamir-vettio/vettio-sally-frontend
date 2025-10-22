@@ -148,6 +148,51 @@ export class AuthService {
         });
       }
 
+      // Add a delay to ensure backend session is fully established
+      // This prevents 401 errors when making immediate API calls after token refresh
+      console.log('⏳ Waiting for backend session to be established...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log('✅ Session establishment delay completed');
+
+      // Verify session is ready with retry mechanism for backend session issues
+      let sessionReady = false;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (!sessionReady && retryCount < maxRetries) {
+        try {
+          console.log(`🔍 Verifying session readiness (attempt ${retryCount + 1}/${maxRetries})...`);
+          const testResponse = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.ME}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${data.access_token}`,
+              'Content-Type': 'application/json'
+            },
+          });
+
+          if (testResponse.ok) {
+            console.log('✅ Session verified as ready');
+            sessionReady = true;
+          } else if (testResponse.status === 401) {
+            console.log(`⚠️ Session not ready yet (attempt ${retryCount + 1}), retrying...`);
+            retryCount++;
+            if (retryCount < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 300 * retryCount));
+            }
+          } else {
+            console.log('⚠️ Unexpected response during session verification, proceeding');
+            break;
+          }
+        } catch (testError) {
+          console.log('⚠️ Session readiness test failed:', testError);
+          break;
+        }
+      }
+
+      if (!sessionReady && retryCount >= maxRetries) {
+        console.log('⚠️ Session verification failed after retries, but proceeding (backend session issue)');
+      }
+
       return data.access_token;
     } catch (error) {
       console.error('❌ Token refresh error:', error);
